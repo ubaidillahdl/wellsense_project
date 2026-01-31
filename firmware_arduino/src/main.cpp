@@ -7,20 +7,17 @@ MAX30105 particleSensor;
 ChebyFilter chebyFilter;
 
 #define BUFFER_SIZE 200
-// #define SHIFT_SIZE 50
 
 // --- KONFIGURASI BUFFER & PARAMETER ---
 float sinyalBuffer[BUFFER_SIZE]; // Tempat menyimpan 100 data terakhir
 
-// --- STORAGE HASIL FUNGSI PUNCAK ---
-uint8_t outValidPeaks[5];
-uint8_t outVBefore[5];
-uint8_t outVAfter[5];
-uint8_t outNumValid;
+const uint32_t Ts = 1 / BUFFER_SIZE; // 200 Hz
+uint32_t lastT = 0;
+uint32_t sampleIdx = 0;
+bool segmentReady = false;
 
 void setup() {
   chebyInit(&chebyFilter);
-
   Serial.begin(115200);
 
   // Inisialisasi Sensor
@@ -31,76 +28,53 @@ void setup() {
   }
 
   // --- SETTING SENSOR (Sangat Mempengaruhi Kualitas Sinyal) ---
-  uint8_t ledBrightness =
-      255; // Kecerahan LED (127): Tengah-tengah agar tidak cepat panas
-  uint8_t sampleAverage =
-      1; // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
-  uint8_t ledMode =
-      2; // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
-  uint8_t sampleRate =
-      200; // Frekuensi pengambilan data (100 Hz): Cukup untuk sinyal PPG
-  uint16_t pulseWidth = 411; // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
-  uint16_t adcRange =
-      16384; // Range ADC: 4096 (resolusi 12-bit untuk detail sinyal)
-
-  // Terapkan semua konfigurasi ke sensor
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate,
-                       pulseWidth, adcRange);
-
-  // --- TAHAP 1: INISIALISASI BUFFER ---
-  Serial.print("Ambil sampel awal");
-  for (byte i = 0; i < BUFFER_SIZE; i++) {
-    while (particleSensor.available() == false)
-      particleSensor.check();
-    sinyalBuffer[i] =
-        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
-    particleSensor.nextSample();
-    if (i % 15 == 0)
-      Serial.print(".");
-  }
+  particleSensor.setup(255, 1, 2, 200, 411, 16384);
 }
 
 void loop() {
-  // --- TAHAP 1: PENGUMPULAN DATA (BATCH) ---
-  // Kita isi seluruh buffer dari indeks 0 sampai 99
-  for (byte i = 0; i < BUFFER_SIZE; i++) {
-    while (particleSensor.available() == false)
-      particleSensor.check();
-    sinyalBuffer[i] =
-        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
-    particleSensor.nextSample();
+  particleSensor.check();
+
+  // 1. BLOK SAMPLING (Prioritas Utama)
+  if (micros() - lastT >= Ts) {
+    lastT += Ts; // Menjaga ritme tetap konsisten
+
+    if (particleSensor.available()) {
+      float rawPPG = particleSensor.getRed();
+      float filteredPPG = chebyProcess(&chebyFilter, rawPPG);
+
+      // Simpan ke buffer
+      if (sampleIdx < BUFFER_SIZE) {
+        sinyalBuffer[sampleIdx] = filteredPPG;
+        sampleIdx++;
+      }
+
+      particleSensor.nextSample();
+    }
   }
 
-  // 3. DETEKSI (Mencari puncak & lembah di seluruh 100 data)
-  detektorSiklus(sinyalBuffer, BUFFER_SIZE, outValidPeaks, outVBefore,
-                 outVAfter, &outNumValid);
+  // 2. BLOK PENGIRIMAN (Dilakukan "cicil" agar tidak memblokir micros)
+  if (segmentReady) {
+    // Jangan pakai for-loop 200 kali sekaligus!
+    // Itu akan memakan waktu mS yang lama dan merusak jadwal micros() di atas.
 
-  // Kirim Data Tengah: Kirim indeks 50-100 ke MATLAB agar marker pas di puncak
-  // (Data tengah dipilih supaya library sudah punya info data sebelum &
-  // sesudahnya)
-  for (byte i = 0; i < BUFFER_SIZE; i++) {
-    float pVal = 0;  // Default 0 jika bukan puncak
-    float lbVal = 0; // Default 0 jika bukan lembah
-    float laVal = 0; // Default 0 jika bukan lembah
+    // Solusi: Kirim data satu per satu setiap kali loop() berjalan
+    // (Time-Slicing)
+    static uint8_t sendIdx = 0;
 
-    // Cek marker di indeks i
-    for (uint8_t j = 0; j < outNumValid; j++) {
-      if (i == outValidPeaks[j])
-        pVal = sinyalBuffer[i];
-      if (i == outVBefore[j])
-        lbVal = sinyalBuffer[i];
-      if (i == outVAfter[j])
-        laVal = sinyalBuffer[i];
+    Serial.println(sinyalBuffer[sendIdx]);
+    sendIdx++;
+
+    if (sendIdx >= BUFFER_SIZE) {
+      sendIdx = 0;
+      segmentReady = false; // Selesai kirim satu blok
     }
+  }
 
-    // Format: Sinyal | Puncak | L-Sblm | L-Ssdh
-    Serial.print("RT:");
-    Serial.print(sinyalBuffer[i]);
-    Serial.print("\t");
-    Serial.print(pVal);
-    Serial.print("\t");
-    Serial.print(lbVal);
-    Serial.print("\t");
-    Serial.println(laVal);
+  // 3. LOGIKA PEMOTONGAN (Kapan segmentReady aktif)
+  // Kamu bisa aktifkan segmentReady berdasarkan jumlah sampel (200)
+  // atau berdasarkan State Machine (V1-P-V2)
+  if (!segmentReady && sampleIdx >= BUFFER_SIZE) {
+    segmentReady = true;
+    sampleIdx = 0;
   }
 }
