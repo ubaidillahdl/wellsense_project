@@ -1,14 +1,14 @@
 #include "cariLembah.h"
 
-void cariLembah(uint16_t *sinyalBuffer, uint8_t panjangBuffer,
+void cariLembah(float *sinyalBuffer, uint8_t panjangBuffer,
                 uint8_t minProminence, uint8_t minDistance,
-                uint16_t *outValleyValues, uint8_t *outValleyLocs,
+                float *outValleyValues, uint8_t *outValleyLocs,
                 uint8_t *outNumValleys) {
   // --- LANGKAH 0: Hitung Rata-rata (Baseline) untuk Zero Crossing ---
-  uint32_t totalSum = 0;
+  float totalSum = 0;
   for (uint8_t i = 0; i < panjangBuffer; i++)
     totalSum += sinyalBuffer[i];
-  uint32_t mean = totalSum / panjangBuffer;
+  float mean = totalSum / (float)panjangBuffer;
 
   uint8_t zcCount = 0;
   for (uint8_t i = 1; i < panjangBuffer; i++) {
@@ -90,7 +90,7 @@ void cariLembah(uint16_t *sinyalBuffer, uint8_t panjangBuffer,
   *outNumValleys = validCount; // Beritahu .ino berapa yang valid
 }
 
-uint8_t kandidatLembah(uint16_t *sinyalBuffer, uint8_t panjangBuffer,
+uint8_t kandidatLembah(float *sinyalBuffer, uint8_t panjangBuffer,
                        uint8_t *indeks) {
   uint8_t count = 0;
   uint8_t gap =

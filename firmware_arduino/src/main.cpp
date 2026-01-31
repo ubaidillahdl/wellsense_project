@@ -1,29 +1,28 @@
-#include <Wire.h>
 #include "MAX30105.h"
 #include <PengolahSinyalPPG.h>
+#include <Wire.h>
 
 MAX30105 particleSensor;
+ChebyFilter chebyFilter;
+
+#define BUFFER_SIZE 200
+#define SHIFT_SIZE BUFFER_SIZE / 4
 
 // --- KONFIGURASI BUFFER & PARAMETER ---
-uint16_t sinyalBuffer[150];   // Tempat menyimpan 100 data terakhir
-uint8_t panjangBuffer = 150;  // Ukuran jendela pengamatan
+float sinyalBuffer[BUFFER_SIZE]; // Tempat menyimpan 100 data terakhir
 
 // --- PENYIMPANAN HASIL DETEKSI ---
-uint8_t outPeakLocs[15];     // Lokasi (indeks) puncak ditemukan
-uint16_t outPeakValues[15];  // Nilai (amplitudo) puncak ditemukan
-uint8_t outNumPeaks;         // Jumlah puncak yang berhasil dideteksi
+uint8_t outPeakLocs[5]; // Lokasi (indeks) puncak ditemukan
+float outPeakValues[5]; // Nilai (amplitudo) puncak ditemukan
+uint8_t outNumPeaks;    // Jumlah puncak yang berhasil dideteksi
 
-uint8_t outValleyLocs[15];     // Lokasi (indeks) lembah ditemukan
-uint16_t outValleyValues[15];  // Nilai (amplitudo) lembah ditemukan
-uint8_t outNumValleys;         // Jumlah lembah yang berhasil dideteksi
-
-// --- PENYIMPANAN HASIL VALIDASI ---
-uint8_t outValidPeaks[10];  // Indeks puncak yang valid
-uint8_t outVBefore[10];     // Indeks lembah sebelum puncak valid
-uint8_t outVAfter[10];      // Indeks lembah sesudah puncak valid
-uint8_t outNumValid;        // Jumlah puncak valid yang ditemukan
+uint8_t outValleyLocs[5]; // Lokasi (indeks) lembah ditemukan
+float outValleyValues[5]; // Nilai (amplitudo) lembah ditemukan
+uint8_t outNumValleys;    // Jumlah lembah yang berhasil dideteksi
 
 void setup() {
+  chebyInit(&chebyFilter);
+
   Serial.begin(115200);
 
   // Inisialisasi Sensor
@@ -34,66 +33,83 @@ void setup() {
   }
 
   // --- SETTING SENSOR (Sangat Mempengaruhi Kualitas Sinyal) ---
-  byte ledBrightness = 255;  // Kecerahan LED (127): Tengah-tengah agar tidak cepat panas
-  byte sampleAverage = 1;    // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
-  byte ledMode = 2;          // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
-  byte sampleRate = 100;     // Frekuensi pengambilan data (100 Hz): Cukup untuk sinyal PPG
-  int pulseWidth = 411;      // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
-  int adcRange = 16384;      // Range ADC: 4096 (resolusi 12-bit untuk detail sinyal)
+  uint8_t ledBrightness =
+      255; // Kecerahan LED (255): Tengah-tengah agar tidak cepat panas
+  uint8_t sampleAverage =
+      1; // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
+  uint8_t ledMode =
+      2; // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
+  uint8_t sampleRate = BUFFER_SIZE; // Frekuensi pengambilan data (200 Hz):
+                                    // Cukup untuk sinyal PPG
+  uint16_t pulseWidth = 411; // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
+  uint16_t adcRange =
+      16384; // Range ADC: 16384 (resolusi 12-bit untuk detail sinyal)
 
   // Terapkan semua konfigurasi ke sensor
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate,
+                       pulseWidth, adcRange);
 
   // --- TAHAP 1: INISIALISASI BUFFER ---
+  // --- TAHAP 1: INISIALISASI BUFFER ---
   Serial.print("Ambil sampel awal");
-  for (byte i = 0; i < panjangBuffer; i++) {
-    while (particleSensor.available() == false) particleSensor.check();
-    sinyalBuffer[i] = signalFilter(particleSensor.getRed());
+  for (byte i = 0; i < BUFFER_SIZE; i++) {
+    while (particleSensor.available() == false)
+      particleSensor.check();
+    sinyalBuffer[i] =
+        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
     particleSensor.nextSample();
-    if (i % 15 == 0) Serial.print(".");
+    if (i % 15 == 0)
+      Serial.print(".");
   }
 }
 
 void loop() {
-  // --- TAHAP 1: PENGUMPULAN DATA (BATCH) ---
-  // Kita isi seluruh buffer dari indeks 0 sampai 99
-  for (byte i = 0; i < panjangBuffer; i++) {
-    while (particleSensor.available() == false) particleSensor.check();
-    sinyalBuffer[i] = signalFilter(particleSensor.getRed());
+  // --- TAHAP 2: LOOPING UTAMA (REAL-TIME) ---
+  // Geser buffer: buang 50 data terlama di kiri
+  memmove(&sinyalBuffer[0], &sinyalBuffer[SHIFT_SIZE],
+          (BUFFER_SIZE - SHIFT_SIZE) * sizeof(float));
+
+  // Isi data baru: tambahkan 50 data baru di kanan (indeks 150-199)
+  for (byte i = (BUFFER_SIZE - SHIFT_SIZE); i < BUFFER_SIZE; i++) {
+    while (particleSensor.available() == false)
+      particleSensor.check();
+    sinyalBuffer[i] =
+        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
     particleSensor.nextSample();
   }
 
-  // --- TAHAP 2: PERHITUNGAN FITUR ---
-  // Algoritma bekerja pada set data statis (tidak berubah selama dihitung)
-  // Gunakan parameter yang pas: minDistance sekitar 30-50, minProminence sesuai kekuatan sinyal
-  cariPuncak(sinyalBuffer, panjangBuffer, 70, 50, outPeakValues, outPeakLocs, &outNumPeaks);
-  cariLembah(sinyalBuffer, panjangBuffer, 70, 50, outValleyValues, outValleyLocs, &outNumValleys);
+  float minPromP = 0.7 * cariNilaiMax(sinyalBuffer, BUFFER_SIZE);
+  float minPromL = 0.5 * cariNilaiMax(sinyalBuffer, BUFFER_SIZE);
+  uint8_t minDist = 0.4 * BUFFER_SIZE;
 
-  // Validasi hubungan Puncak-Lembah
-  puncakValid(outPeakLocs, outNumPeaks, outValleyLocs, outNumValleys, outValidPeaks, outVBefore, outVAfter, &outNumValid);
+  cariPuncak(sinyalBuffer, BUFFER_SIZE, minPromP, minDist, outPeakValues,
+             outPeakLocs, &outNumPeaks);
+  cariLembah(sinyalBuffer, BUFFER_SIZE, minPromL, minDist, outValleyValues,
+             outValleyLocs, &outNumValleys);
 
-  // --- TAHAP 3: PENGIRIMAN DATA KE MATLAB ---
-  // Kirim seluruh 100 data yang baru saja diproses
-  for (byte i = 0; i < panjangBuffer; i++) {
-    float pVal = 0;   // Default 0 jika bukan puncak
-    float lbVal = 0;  // Default 0 jika bukan lembah sebelum
-    float laVal = 0;  // Default 0 jika bukan lembah sesudah
+  // Kirim Data Tengah: Kirim indeks 50-100 ke MATLAB agar marker pas di puncak
+  // (Data tengah dipilih supaya library sudah punya info data sebelum &
+  // sesudahnya)
+  for (byte i = SHIFT_SIZE; i < BUFFER_SIZE / 2; i++) {
+    float pVal = 0; // Default 0 jika bukan puncak
+    float lVal = 0; // Default 0 jika bukan lembah
 
-    // Cek marker di indeks i
-    for (uint8_t j = 0; j < outNumValid; j++) {
-      if (i == outValidPeaks[j]) pVal = sinyalBuffer[i];
-      if (i == outVBefore[j]) lbVal = sinyalBuffer[i];
-      if (i == outVAfter[j]) laVal = sinyalBuffer[i];
+    // Cek apakah indeks saat ini adalah lokasi puncak/lembah hasil hitungan
+    for (uint8_t j = 0; j < outNumPeaks; j++) {
+      if (i == outPeakLocs[j])
+        pVal = sinyalBuffer[i];
+    }
+    for (uint8_t j = 0; j < outNumValleys; j++) {
+      if (i == outValleyLocs[j])
+        lVal = sinyalBuffer[i];
     }
 
-    // Format RT:Sinyal [tab] Puncak [tab] VBefore [tab] VAfter
+    // Format pengiriman untuk MATLAB Plotter
     Serial.print("RT:");
-    Serial.print(sinyalBuffer[i]);
+    Serial.print(sinyalBuffer[i]); // Kolom 1: Sinyal
     Serial.print("\t");
-    Serial.print(pVal);
+    Serial.print(pVal); // Kolom 2: Marker Puncak
     Serial.print("\t");
-    Serial.print(lbVal);
-    Serial.print("\t");
-    Serial.println(laVal);
+    Serial.println(lVal); // Kolom 3: Marker Lembah
   }
 }

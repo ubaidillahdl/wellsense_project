@@ -3,7 +3,9 @@
 
 #include "cariLembah.h"
 #include "cariPuncak.h"
+#include "chebyFilter.h"
 #include "dcRemoval.h"
+#include "detektorSiklus.h"
 #include "puncakValid.h"
 #include "signalFilter.h"
 
