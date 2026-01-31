@@ -2,20 +2,23 @@
 #include <PengolahSinyalPPG.h>
 #include <Wire.h>
 
-#define BUFFER_LENGTH 200
 
 MAX30105 particleSensor;
+ChebyFilter filterM;
+ChebyFilter filterI;
 
 const byte interruptPin = 3;
 volatile bool dataReady = false;
 
-uint32_t bufferM[BUFFER_LENGTH];
-uint32_t bufferI[BUFFER_LENGTH];
-uint8_t bufferIdx = 0;
+int16_t rawM;
+int16_t rawI;
 
 void handleInterrupt() { dataReady = true; }
 
 void setup() {
+  chebyInit(&filterM);
+  chebyInit(&filterI);
+
   Serial.begin(115200);
   pinMode(interruptPin, INPUT_PULLUP);
 
@@ -27,7 +30,7 @@ void setup() {
   }
 
   // --- SETTING SENSOR (Sangat Mempengaruhi Kualitas Sinyal) ---
-  particleSensor.setup(255, 1, 2, 200, 411, 16384);
+  particleSensor.setup(255, 1, 2, 400, 411, 16384);
 
   particleSensor.enableDATARDY();
   particleSensor.getINT1();
@@ -42,22 +45,16 @@ void loop() {
     particleSensor.check();
 
     while (particleSensor.available()) {
-      bufferM[bufferIdx] = particleSensor.getFIFOIR();
-      bufferI[bufferIdx] = particleSensor.getFIFORed();
+      rawM = particleSensor.getFIFOIR();
+      rawI = particleSensor.getFIFORed();
       particleSensor.nextSample();
-
-      bufferIdx++;
     }
 
-    if (bufferIdx >= BUFFER_LENGTH) {
-      for (uint8_t i = 0; i < BUFFER_LENGTH; i++) {
-        Serial.print("M:");
-        Serial.print(bufferM[i]);
-        Serial.print("\tI:");
-        Serial.println(bufferM[i]);
-      }
-      bufferIdx = 0;
-    }
     particleSensor.getINT1();
+
+    Serial.print("M:");
+    Serial.print(rawM);
+    Serial.print("\tI:");
+    Serial.println(rawI);
   }
 }
