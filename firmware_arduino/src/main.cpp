@@ -114,4 +114,46 @@ void loop() {
     Serial.print("\t");
     Serial.println(laVal);
   }
+
+  // 6. KIRIM SIKLUS UTUH (Grafik Bawah - Burst/Semburan)
+  // Kita cek apakah ada siklus yang baru saja selesai (VAfter ada di area data
+  // baru 75-99)
+  for (uint8_t j = 0; j < outNumValid; j++) {
+    if (outVAfter[j] >= 75) {
+
+      // Kirim instruksi ke MATLAB untuk reset Plot 2 (Opsional jika MATLAB
+      // mendukung)
+      Serial.println("START_PLOT_2");
+
+      uint8_t start = outVBefore[j];
+      uint8_t end = outVAfter[j];
+
+      // Kirim seluruh titik dalam siklus tersebut sekaligus
+      for (uint8_t k = start; k <= end; k++) {
+        uint16_t sig = sinyalBuffer[k];
+        uint16_t p = 0;
+        uint16_t lb = 0;
+        uint16_t la = 0;
+
+        if (k == outValidPeaks[j])
+          p = sig;
+        if (k == outVBefore[j])
+          lb = sig;
+        if (k == outVAfter[j])
+          la = sig;
+
+        Serial.print("CYC:");
+        Serial.print(k - start); // X: Indeks lokal dimulai dari 0
+        Serial.print("\t");
+        Serial.print(sig); // Y: Sinyal
+        Serial.print("\t");
+        Serial.print(p); // Marker Puncak
+        Serial.print("\t");
+        Serial.print(lb); // Marker L-Sebelum
+        Serial.print("\t");
+        Serial.println(la); // Marker L-Sesudah
+      }
+      Serial.println("END_PLOT_2");
+    }
+  }
 }
