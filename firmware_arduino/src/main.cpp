@@ -1,25 +1,19 @@
 #include "MAX30105.h"
-#include <PengolahSinyalPPG.h>
 #include <Wire.h>
 
 
 MAX30105 particleSensor;
-ChebyFilter filterM;
-ChebyFilter filterI;
 
 const byte interruptPin = 3;
 volatile bool dataReady = false;
 
-int32_t rawM;
-int32_t rawI;
+float rawM;
+float rawI;
 
 void handleInterrupt() { dataReady = true; }
 
 void setup() {
-  chebyInit(&filterM);
-  chebyInit(&filterI);
-
-  Serial.begin(115200);
+  Serial.begin(2000000);
   pinMode(interruptPin, INPUT_PULLUP);
 
   // Inisialisasi Sensor
@@ -45,8 +39,8 @@ void loop() {
     particleSensor.check();
 
     while (particleSensor.available()) {
-      rawM = chebyProcess(&filterM, particleSensor.getFIFOIR());
-      rawI = chebyProcess(&filterI, particleSensor.getFIFORed());
+      rawM = particleSensor.getFIFOIR();
+      rawI = particleSensor.getFIFORed();
       particleSensor.nextSample();
     }
 
