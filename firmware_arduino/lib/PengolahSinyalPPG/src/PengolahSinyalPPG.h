@@ -4,10 +4,10 @@
 #include "cariLembah.h"
 #include "cariPuncak.h"
 #include "dcRemoval.h"
+#include "detektorSiklus.h"
 #include "puncakValid.h"
 #include "signalFilter.h"
 
-
-float cariNilaiMax(float *sinyalBuffer, uint8_t panjangBuffer);
+float cariNilaiMax(uint16_t *sinyalBuffer, uint8_t panjangBuffer);
 
 #endif

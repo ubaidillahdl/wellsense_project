@@ -1,27 +1,23 @@
-#include <Wire.h>
 #include "MAX30105.h"
 #include <PengolahSinyalPPG.h>
+#include <Wire.h>
 
 MAX30105 particleSensor;
 
-// --- KONFIGURASI BUFFER & PARAMETER ---
-uint16_t sinyalBuffer[150];   // Tempat menyimpan 100 data terakhir
-uint8_t panjangBuffer = 150;  // Ukuran jendela pengamatan
+#define BUFFER_SIZE 100
+#define SHIFT_SIZE 25
 
-// --- PENYIMPANAN HASIL DETEKSI ---
-uint8_t outPeakLocs[15];     // Lokasi (indeks) puncak ditemukan
-uint16_t outPeakValues[15];  // Nilai (amplitudo) puncak ditemukan
-uint8_t outNumPeaks;         // Jumlah puncak yang berhasil dideteksi
+// --- BUFFER UTAMA ---
+uint16_t sinyalBuffer[BUFFER_SIZE];
+bool isPeak[BUFFER_SIZE];
+bool isTroughBefore[BUFFER_SIZE];
+bool isTroughAfter[BUFFER_SIZE];
 
-uint8_t outValleyLocs[15];     // Lokasi (indeks) lembah ditemukan
-uint16_t outValleyValues[15];  // Nilai (amplitudo) lembah ditemukan
-uint8_t outNumValleys;         // Jumlah lembah yang berhasil dideteksi
-
-// --- PENYIMPANAN HASIL VALIDASI ---
-uint8_t outValidPeaks[10];  // Indeks puncak yang valid
-uint8_t outVBefore[10];     // Indeks lembah sebelum puncak valid
-uint8_t outVAfter[10];      // Indeks lembah sesudah puncak valid
-uint8_t outNumValid;        // Jumlah puncak valid yang ditemukan
+// --- STORAGE HASIL FUNGSI PUNCAK ---
+uint8_t outValidPeaks[10];
+uint8_t outVBefore[10];
+uint8_t outVAfter[10];
+uint8_t outNumValid;
 
 void setup() {
   Serial.begin(115200);
@@ -34,61 +30,83 @@ void setup() {
   }
 
   // --- SETTING SENSOR (Sangat Mempengaruhi Kualitas Sinyal) ---
-  byte ledBrightness = 255;  // Kecerahan LED (127): Tengah-tengah agar tidak cepat panas
-  byte sampleAverage = 1;    // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
-  byte ledMode = 2;          // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
-  byte sampleRate = 100;     // Frekuensi pengambilan data (100 Hz): Cukup untuk sinyal PPG
-  int pulseWidth = 411;      // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
-  int adcRange = 16384;      // Range ADC: 4096 (resolusi 12-bit untuk detail sinyal)
+  byte ledBrightness =
+      255; // Kecerahan LED (127): Tengah-tengah agar tidak cepat panas
+  byte sampleAverage =
+      1; // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
+  byte ledMode =
+      2; // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
+  byte sampleRate =
+      100; // Frekuensi pengambilan data (100 Hz): Cukup untuk sinyal PPG
+  int pulseWidth = 411; // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
+  int adcRange = 16384; // Range ADC: 4096 (resolusi 12-bit untuk detail sinyal)
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate,
+                       pulseWidth, adcRange);
 
-  // Terapkan semua konfigurasi ke sensor
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
-
-  // --- TAHAP 1: INISIALISASI BUFFER ---
+  // Fill buffer awal agar tidak kosong saat loop pertama
   Serial.print("Ambil sampel awal");
-  for (byte i = 0; i < panjangBuffer; i++) {
-    while (particleSensor.available() == false) particleSensor.check();
+  for (byte i = 0; i < BUFFER_SIZE; i++) {
+    while (particleSensor.available() == false)
+      particleSensor.check();
     sinyalBuffer[i] = signalFilter(particleSensor.getRed());
     particleSensor.nextSample();
-    if (i % 15 == 0) Serial.print(".");
+    if (i % 15 == 0)
+      Serial.print(".");
   }
 }
 
 void loop() {
-  // --- TAHAP 1: PENGUMPULAN DATA (BATCH) ---
-  // Kita isi seluruh buffer dari indeks 0 sampai 99
-  for (byte i = 0; i < panjangBuffer; i++) {
-    while (particleSensor.available() == false) particleSensor.check();
+  // 1. GESER BUFFER (Membuang 25 data tertua, menyisakan ruang di akhir)
+  memmove(&sinyalBuffer[0], &sinyalBuffer[SHIFT_SIZE], 75 * sizeof(uint16_t));
+  memmove(&isPeak[0], &isPeak[SHIFT_SIZE], 75 * sizeof(bool));
+  memmove(&isTroughBefore[0], &isTroughBefore[SHIFT_SIZE], 75 * sizeof(bool));
+  memmove(&isTroughAfter[0], &isTroughAfter[SHIFT_SIZE], 75 * sizeof(bool));
+
+  // 2. ISI DATA BARU (Ke indeks 75 - 99)
+  for (byte i = (BUFFER_SIZE - SHIFT_SIZE); i < BUFFER_SIZE; i++) {
+    while (particleSensor.available() == false)
+      particleSensor.check();
     sinyalBuffer[i] = signalFilter(particleSensor.getRed());
+
+    // Reset status data baru (wajib agar marker lama tidak terbawa)
+    isPeak[i] = false;
+    isTroughBefore[i] = false;
+    isTroughAfter[i] = false;
+
     particleSensor.nextSample();
   }
 
-  // --- TAHAP 2: PERHITUNGAN FITUR ---
-  // Algoritma bekerja pada set data statis (tidak berubah selama dihitung)
-  // Gunakan parameter yang pas: minDistance sekitar 30-50, minProminence sesuai kekuatan sinyal
-  cariPuncak(sinyalBuffer, panjangBuffer, 70, 50, outPeakValues, outPeakLocs, &outNumPeaks);
-  cariLembah(sinyalBuffer, panjangBuffer, 70, 50, outValleyValues, outValleyLocs, &outNumValleys);
+  // 3. DETEKSI (Mencari puncak & lembah di seluruh 100 data)
+  detektorSiklus(sinyalBuffer, BUFFER_SIZE, outValidPeaks, outVBefore,
+                 outVAfter, &outNumValid);
 
-  // Validasi hubungan Puncak-Lembah
-  puncakValid(outPeakLocs, outNumPeaks, outValleyLocs, outNumValleys, outValidPeaks, outVBefore, outVAfter, &outNumValid);
+  // 4. UPDATE STATUS (Sinkronisasi hasil deteksi ke array boolean)
+  // Tandai berdasarkan hasil hitungan terbaru
+  for (uint8_t j = 0; j < outNumValid; j++) {
+    isPeak[outValidPeaks[j]] = true;
+    isTroughBefore[outVBefore[j]] = true;
+    isTroughAfter[outVAfter[j]] = true;
+  }
 
-  // --- TAHAP 3: PENGIRIMAN DATA KE MATLAB ---
-  // Kirim seluruh 100 data yang baru saja diproses
-  for (byte i = 0; i < panjangBuffer; i++) {
-    float pVal = 0;   // Default 0 jika bukan puncak
-    float lbVal = 0;  // Default 0 jika bukan lembah sebelum
-    float laVal = 0;  // Default 0 jika bukan lembah sesudah
+  // 5. KIRIM DATA MATANG (Indeks 0-24)
+  // Data dikirim setelah 'menginap' di buffer agar divalidasi oleh data
+  // sesudahnya
+  for (byte i = 0; i < SHIFT_SIZE; i++) {
+    uint16_t currentSignal = sinyalBuffer[i];
+    uint16_t pVal = 0;
+    uint16_t lbVal = 0;
+    uint16_t laVal = 0;
 
-    // Cek marker di indeks i
-    for (uint8_t j = 0; j < outNumValid; j++) {
-      if (i == outValidPeaks[j]) pVal = sinyalBuffer[i];
-      if (i == outVBefore[j]) lbVal = sinyalBuffer[i];
-      if (i == outVAfter[j]) laVal = sinyalBuffer[i];
-    }
+    if (isPeak[i])
+      pVal = currentSignal;
+    if (isTroughBefore[i])
+      lbVal = currentSignal;
+    if (isTroughAfter[i])
+      laVal = currentSignal;
 
-    // Format RT:Sinyal [tab] Puncak [tab] VBefore [tab] VAfter
+    // Format: Sinyal | Puncak | L-Sblm | L-Ssdh
     Serial.print("RT:");
-    Serial.print(sinyalBuffer[i]);
+    Serial.print(currentSignal);
     Serial.print("\t");
     Serial.print(pVal);
     Serial.print("\t");
