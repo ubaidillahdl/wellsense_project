@@ -1,31 +1,28 @@
 #include "MAX30105.h"
-#include <PengolahSinyalPPG.h>
 #include <Wire.h>
 
 
 MAX30105 particleSensor;
-ChebyFilter chebyFilter;
 
-#define BUFFER_SIZE 200
-#define SHIFT_SIZE 50
+const byte interruptPin = 3;
+volatile bool dataReady = false;
 
-// --- KONFIGURASI BUFFER & PARAMETER ---
-float sinyalBuffer[BUFFER_SIZE]; // Tempat menyimpan 100 data terakhir
-float maBufferArray[8]; // Ukuran window (8 cukup baik untuk smoothing PPG)
-bool isPeak[BUFFER_SIZE];
-bool isTroughBefore[BUFFER_SIZE];
-bool isTroughAfter[BUFFER_SIZE];
+// Gunakan int32_t untuk menyimpan data
 
-// --- STORAGE HASIL FUNGSI PUNCAK ---
-uint8_t outValidPeaks[5];
-uint8_t outVBefore[5];
-uint8_t outVAfter[5];
-uint8_t outNumValid;
+int64_t xRawRed;
+int64_t xRawIR;
+
+int64_t xRed, yRed;
+int64_t xIR, yIR;
+
+int64_t xRed1 = 0, yRed1 = 0;
+int64_t xIR1 = 0, yIR1 = 0;
+
+void handleInterrupt() { dataReady = true; }
 
 void setup() {
-  chebyInit(&chebyFilter);
-
   Serial.begin(115200);
+  pinMode(interruptPin, INPUT_PULLUP);
 
   // Inisialisasi Sensor
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
@@ -35,98 +32,46 @@ void setup() {
   }
 
   // --- SETTING SENSOR (Sangat Mempengaruhi Kualitas Sinyal) ---
-  uint8_t ledBrightness =
-      255; // Kecerahan LED (127): Tengah-tengah agar tidak cepat panas
-  uint8_t sampleAverage =
-      1; // Rata-rata sampel: 4 data digabung jadi 1 (mengurangi noise)
-  uint8_t ledMode =
-      2; // Mode LED: 2 = Red + IR (IR paling sensitif untuk detak jantung)
-  uint8_t sampleRate =
-      200; // Frekuensi pengambilan data (100 Hz): Cukup untuk sinyal PPG
-  uint16_t pulseWidth = 411; // Lebar pulsa: 411 µs (mempengaruhi resolusi ADC)
-  uint16_t adcRange =
-      16384; // Range ADC: 4096 (resolusi 12-bit untuk detail sinyal)
+  particleSensor.setup(255, 1, 2, 400, 411, 16384);
 
-  // Terapkan semua konfigurasi ke sensor
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate,
-                       pulseWidth, adcRange);
-
-  // --- TAHAP 1: INISIALISASI BUFFER ---
-  Serial.print("Ambil sampel awal");
-  for (byte i = 0; i < BUFFER_SIZE; i++) {
-    while (particleSensor.available() == false)
-      particleSensor.check();
-    sinyalBuffer[i] =
-        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
-    particleSensor.nextSample();
-    if (i % 15 == 0)
-      Serial.print(".");
-  }
+  particleSensor.enableDATARDY();
+  particleSensor.getINT1();
+  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt,
+                  FALLING);
 }
 
 void loop() {
-  // --- TAHAP 2: LOOPING UTAMA (REAL-TIME) ---
-  // Geser buffer: buang 50 data terlama di kiri
-  memmove(&sinyalBuffer[0], &sinyalBuffer[SHIFT_SIZE],
-          (BUFFER_SIZE - SHIFT_SIZE) * sizeof(float));
-  memmove(&isPeak[0], &isPeak[SHIFT_SIZE],
-          (BUFFER_SIZE - SHIFT_SIZE) * sizeof(bool));
-  memmove(&isTroughBefore[0], &isTroughBefore[SHIFT_SIZE],
-          (BUFFER_SIZE - SHIFT_SIZE) * sizeof(bool));
-  memmove(&isTroughAfter[0], &isTroughAfter[SHIFT_SIZE],
-          (BUFFER_SIZE - SHIFT_SIZE) * sizeof(bool));
+  if (dataReady) {
+    dataReady = false;
 
-  // Isi data baru: tambahkan 50 data baru di kanan (indeks 150-199)
-  for (byte i = (BUFFER_SIZE - 50); i < BUFFER_SIZE; i++) {
-    while (particleSensor.available() == false)
-      particleSensor.check();
-    sinyalBuffer[i] =
-        chebyProcess(&chebyFilter, (float)particleSensor.getRed());
+    particleSensor.check();
 
-    // Reset status data baru (wajib agar marker lama tidak terbawa)
-    isPeak[i] = false;
-    isTroughBefore[i] = false;
-    isTroughAfter[i] = false;
+    while (particleSensor.available()) {
+      xRed = particleSensor.getFIFORed();
+      xIR = particleSensor.getFIFOIR();
 
-    particleSensor.nextSample();
-  }
+      xRawRed = xRed;
+      xRawIR = xIR;
 
-  // 3. DETEKSI (Mencari puncak & lembah di seluruh 100 data)
-  detektorSiklus(sinyalBuffer, BUFFER_SIZE, outValidPeaks, outVBefore,
-                 outVAfter, &outNumValid);
+      // Gunakan casting (int64_t) untuk mencegah overflow saat perkalian
+      // Lalu bagi 10000 untuk kembali ke skala normal
+      yRed = (8815 * yRed1 + 592 * xRed + 592 * xRed1) / 10000;
+      yIR = (8815 * yIR1 + 592 * xIR + 592 * xIR1) / 10000;
 
-  // 4. UPDATE STATUS (Sinkronisasi hasil deteksi ke array boolean)
-  // Tandai berdasarkan hasil hitungan terbaru
-  for (uint8_t j = 0; j < outNumValid; j++) {
-    isPeak[outValidPeaks[j]] = true;
-    isTroughBefore[outVBefore[j]] = true;
-    isTroughAfter[outVAfter[j]] = true;
-  }
+      // Update history
+      xRed1 = xRed;
+      yRed1 = yRed;
+      xIR1 = xIR;
+      yIR1 = yIR;
 
-  // Kirim Data Tengah: Kirim indeks 50-100 ke MATLAB agar marker pas di puncak
-  // (Data tengah dipilih supaya library sudah punya info data sebelum &
-  // sesudahnya)
-  for (byte i = 0; i < SHIFT_SIZE; i++) {
-    float currentSignal = sinyalBuffer[i];
-    float pVal = 0;  // Default 0 jika bukan puncak
-    float lbVal = 0; // Default 0 jika bukan lembah
-    float laVal = 0; // Default 0 jika bukan lembah
+      particleSensor.nextSample();
+    }
 
-    if (isPeak[i])
-      pVal = currentSignal;
-    if (isTroughBefore[i])
-      lbVal = currentSignal;
-    if (isTroughAfter[i])
-      laVal = currentSignal;
+    particleSensor.getINT1();
 
-    // Format: Sinyal | Puncak | L-Sblm | L-Ssdh
-    Serial.print("RT:");
-    Serial.print(currentSignal);
-    Serial.print("\t");
-    Serial.print(pVal);
-    Serial.print("\t");
-    Serial.print(lbVal);
-    Serial.print("\t");
-    Serial.println(laVal);
+    Serial.print("M:");
+    Serial.print(long(xRawRed));
+    Serial.print("\tI:");
+    Serial.println(long(xRawIR));
   }
 }
