@@ -1,33 +1,26 @@
-# Wellsense IoT Project
+# Wellsense Project 🩺
 
-Proyek sistem pemantauan vital sign (PPG) berbasis IoT. Proyek ini mencakup pengembangan firmware microcontroller, server pemrosesan data, dan dashboard pemantauan.
+Sistem monitoring sinyal PPG (Photoplethysmogram) menggunakan sensor MAX30105 dan Arduino Pro Mini. Proyek ini fokus pada pengolahan sinyal digital secara real-time untuk deteksi detak jantung yang akurat.
 
-## 🚀 Struktur Proyek
-- **firmware_arduino/**: Kode sumber C++ untuk Pro Mini/Arduino menggunakan PlatformIO.
-- **python_server/**: (Coming Soon) Server pengolah data untuk komputasi algoritma berat.
-- **web_dashboard/**: (Coming Soon) Antarmuka pengguna berbasis web untuk visualisasi data.
+## 🚀 Status Terakhir: v1.3 (Stable DSP)
 
-## 📌 Riwayat Versi (Milestones)
+Versi terbaru (v1.3) telah mengimplementasikan:
 
-### [v1.0] - Era Full Arduino (Initial Release)
-- Implementasi algoritma deteksi puncak (peak) dan lembah (valley) secara lokal di Arduino.
-- Filter sinyal PPG menggunakan `PengolahSinyalPPG.h`.
-- Output data diformat untuk visualisasi real-time (MATLAB/Serial Plotter).
-- **Kondisi**: Versi stabil terakhir sebelum pemindahan logika ke server Python karena keterbatasan RAM.
+- **Chebyshev Filter:** Mengurangi noise frekuensi tinggi untuk sinyal yang lebih halus.
+- **Sliding Window Buffer (200 samples):** Pengolahan data real-time tanpa jeda (zero-phase delay).
+- **Dynamic Prominence:** Kalibrasi otomatis ambang batas puncak (peak) berdasarkan kekuatan sinyal.
 
----
+## 🛠️ Arsitektur Sistem
 
-## 🛠️ Pengembangan
-### Prasyarat
-- [VS Code](https://code.visualstudio.com/) + Extension [PlatformIO](https://platformio.org/).
-- Driver USB to Serial (untuk Pro Mini).
+- **Hardware:** Arduino Pro Mini, MAX30105 Sensor.
+- **Library Khusus:** `PengolahSinyalPPG` (Custom DSP Library).
+- **Format Data:** Output Serial menggunakan prefix `RT:` untuk pengolahan lebih lanjut di sisi Server/MATLAB.
 
-### Cara Penggunaan
-1. Clone repository ini.
-2. Buka folder `firmware_arduino` di VS Code via PlatformIO.
-3. Hubungkan board dan lakukan **Build & Upload**.
+## 📌 Rencana Pengembangan (Roadmap)
 
-## 📝 Catatan Implementasi
-- Hardware: Pro Mini 3.3V 8MHz / 16MHz.
-- Sensor: MAX30105.
-- Komunikasi: Saat ini masih menggunakan Serial, rencana migrasi ke SIM800C (GSM).
+- [x] v1.1 - Batch Processing
+- [x] v1.3 - Real-time Sliding Window & Chebyshev Filter
+- [ ] v2.0 - Integrasi **SIM800C** & Server Side Processing (Python).
+- [ ] Implementasi pengiriman data via GPRS (menggantikan Serial).
+
+> **Catatan:** Pengolahan berat sengaja dipindah ke sisi server untuk menjaga efisiensi RAM pada microcontroller karena keterbatasan memori saat menggunakan modul SIM800C.
