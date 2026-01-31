@@ -7,6 +7,7 @@
 #include "detektorSiklus.h"
 #include "puncakValid.h"
 #include "signalFilter.h"
+#include "statistikSinyal.h"
 
 float cariNilaiMax(uint16_t *sinyalBuffer, uint8_t panjangBuffer);
 
