@@ -42,6 +42,7 @@ LpfState filterIR;
 uint8_t bufferIdx = 0;
 int32_t rawRed, filteredRed, rawIR, filteredIR;
 unsigned long waktuMulai = 0;
+unsigned long waktuMulaiSesi = 0;
 bool sedangIstirahat = false;
 
 // --- PROTOTYPE ---
@@ -113,6 +114,7 @@ void loop() {
 
                   attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
                   sedangIstirahat = false;  // Masuk mode aktif
+                  waktuMulaiSesi = millis();
                   bufferIdx = 0;
             } else {
                   return;  // Masih dalam masa tunggu (cooldown)
@@ -144,10 +146,15 @@ void loop() {
                   updateDesimasi(desimIR, filteredIR, outIR);
 
                   if (updateDesimasi(desimRed, filteredRed, outRed)) {
-                        if (bufferIdx < PANJANG_BUFFER) {
-                              wadah.bufferRed[bufferIdx] = outRed;
-                              wadah.bufferIR[bufferIdx] = outIR;
-                              bufferIdx++;
+                        // MODIFIKASI DI SINI:
+                        // Hanya simpan ke buffer jika sudah lewat 1 detik sejak sesi dimulai
+                        // 1 detik = 50 data (karena frekuensi desimasi kita 50Hz)
+                        if (millis() - waktuMulaiSesi >= 1000) {
+                              if (bufferIdx < PANJANG_BUFFER) {
+                                    wadah.bufferRed[bufferIdx] = outRed;
+                                    wadah.bufferIR[bufferIdx] = outIR;
+                                    bufferIdx++;
+                              }
                         }
                   }
                   particleSensor.nextSample();
