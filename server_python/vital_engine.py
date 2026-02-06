@@ -52,7 +52,7 @@ class VitalEngine:
             self.last_result = output
             return output
 
-        if std_val > 100:
+        if std_val > 150:
             output["status"] = "NOISY"
             self.last_result = output
             return output
