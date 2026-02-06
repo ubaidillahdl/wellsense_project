@@ -1,8 +1,10 @@
-#include <MAX30105.h>
 #include "SoftwareSerial.h"
+#include <MAX30105.h>
 #include <Wire.h>
 
-#define BUFFER_LENGTH 150 // 3 detik data (50Hz)
+#define PANJANG_BUFFER 150 // 3 detik data (50Hz)
+#define SERVER_IP "192.168.0.105"
+#define SERVER_PORT "5005"
 
 MAX30105 particleSensor;
 SoftwareSerial sim800(4, 5); // RX, TX
@@ -13,8 +15,8 @@ volatile bool dataReady = false;
 // --- STRUKTUR DATA & STATE ---
 
 struct DataSensor {
-  int16_t bufferIR[BUFFER_LENGTH];
-  int16_t bufferRed[BUFFER_LENGTH];
+  int16_t bufferIR[PANJANG_BUFFER];
+  int16_t bufferRed[PANJANG_BUFFER];
 } wadah;
 
 // Penurunan sample rate (400Hz -> 50Hz)
@@ -96,7 +98,7 @@ void loop() {
       updateDesimasi(desimIR, filteredIR, outIR);
 
       if (updateDesimasi(desimRed, filteredRed, outRed)) {
-        if (bufferIdx < BUFFER_LENGTH) {
+        if (bufferIdx < PANJANG_BUFFER) {
           wadah.bufferRed[bufferIdx] = outRed;
           wadah.bufferIR[bufferIdx] = outIR;
           bufferIdx++;
@@ -108,13 +110,13 @@ void loop() {
   }
 
   // --- 2. PENGIRIMAN DATA (Saat Buffer Penuh) ---
-  if (bufferIdx >= BUFFER_LENGTH) {
+  if (bufferIdx >= PANJANG_BUFFER) {
     detachInterrupt(digitalPinToInterrupt(interruptPin));
 
     if (hubungkanKePython()) {
       // Hitung panjang karakter manual untuk AT+CIPSEND
       long totalChar = 0;
-      for (uint8_t i = 0; i < BUFFER_LENGTH; i++) {
+      for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
         char buf[20];
         totalChar +=
             sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
@@ -126,7 +128,7 @@ void loop() {
       delay(200); // Jeda tunggu prompt '>'
 
       // Kirim data ke SIM800 & Serial Monitor (Debug)
-      for (uint8_t i = 0; i < BUFFER_LENGTH; i++) {
+      for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
         sim800.print(wadah.bufferIR[i]);
         sim800.print(F(":"));
         sim800.print(wadah.bufferRed[i]);
@@ -231,7 +233,10 @@ bool hubungkanKePython() {
 
   while (sim800.available())
     sim800.read(); // Kuras buffer serial
-  sim800.println(F("AT+CIPSTART=\"TCP\",\"192.168.0.111\",5005"));
+  sim800.print(F("AT+CIPSTART=\"TCP\",\""));
+  sim800.print(SERVER_IP);
+  sim800.print(F("\","));
+  sim800.println(SERVER_PORT);
 
   unsigned long timeout = millis();
   while (millis() - timeout < 3000) {

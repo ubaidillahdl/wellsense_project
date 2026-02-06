@@ -7,7 +7,8 @@ from vital_engine import VitalEngine
 
 if __name__ == "__main__":
     # 1. Tanya Pengguna di Terminal
-    pilihan = input("\n[?] Jalankan dengan Grafik? (y/n): ").lower().strip()
+    # pilihan = input("\n[?] Jalankan dengan Grafik? (y/n): ").lower().strip()
+    pilihan = "n"
 
     # 2. Inisialisasi Resource Utama
     shared_queue = queue.Queue()  # Penampung data untuk dikirim ke Plotter
