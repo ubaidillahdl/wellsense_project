@@ -45,6 +45,8 @@ unsigned long waktuMulai = 0;
 unsigned long waktuMulaiSesi = 0;
 bool sedangIstirahat = false;
 
+bool butuhRetryCepat = false;
+
 // --- PROTOTYPE ---
 bool updateDesimasi(DesimasiState &d, int32_t inputVal, int16_t &outputVal);
 bool hubungkanKePython();
@@ -73,14 +75,14 @@ void setup() {
       particleSensor.setPulseAmplitudeRed(0);   // Mematikan LED Merah
       particleSensor.setPulseAmplitudeIR(255);  // IR tetap Full Power untuk testing
 
-      Serial.print(F(">>> RAM Awal Setup \t: "));
-      Serial.print(sisaRAM());
-      Serial.println(F(" byte"));
+      //   Serial.print(F(">>> RAM Awal Setup \t: "));
+      //   Serial.print(sisaRAM());
+      //   Serial.println(F(" byte"));
 }
 
 void loop() {
       // --- 0. GERBANG PROXIMITY (CEK TANGAN) ---
-      // Jika tangan lepas, sistem langsung "tidur" dan abaikan kode di bawahnya
+      // Memastikan sensor hanya aktif jika ada objek di atasnya
       if (!adaTangan()) {
             if (!sedangIstirahat) {
                   bufferIdx = 0;
@@ -101,11 +103,18 @@ void loop() {
       }
 
       // --- 1. PROSES BANGUN & COOLDOWN ---
-      // Memberi jeda 3 detik setelah kirim data sebelum mulai ambil data lagi
       if (sedangIstirahat) {
-            // Cek apakah sudah cukup waktu cooldown (misal 3 detik) agar tidak spamming
-            if (millis() - waktuMulai >= 3000) {
-                  particleSensor.setPulseAmplitudeRed(255);  // Nyalakan LED Full
+            // Tentukan durasi: 200ms jika butuh retry cepat, 3000ms jika normal (setelah data valid)
+            unsigned long durasiTunggu = butuhRetryCepat ? 200 : 3000;
+
+            if (millis() - waktuMulai >= durasiTunggu) {
+                  Serial.println(butuhRetryCepat ? F("\n>>> Kegagalan Terdeteksi: Mencoba ulang...") : F("\n>>> Memulai sesi pengukuran baru..."));
+
+                  // Reset flag retry karena sesi baru sudah dimulai
+                  if (butuhRetryCepat) butuhRetryCepat = false;
+
+                  // Nyalakan LED Red Full Power
+                  particleSensor.setPulseAmplitudeRed(255);
 
                   // Pembersihan Buffer: Buang data sisa/sampah dari sensor
                   particleSensor.check();
@@ -116,6 +125,7 @@ void loop() {
                   sedangIstirahat = false;  // Masuk mode aktif
                   waktuMulaiSesi = millis();
                   bufferIdx = 0;
+                  //   }
             } else {
                   return;  // Masih dalam masa tunggu (cooldown)
             }
@@ -203,16 +213,22 @@ void loop() {
                                     Serial.print(F(">>> Feedback dari Server : "));
                                     Serial.println(vitals);
 
+                                    butuhRetryCepat = false;
                                     dataReceived = true;
                                     break;
                               } else if (c == 'H') {  // Heartbeat Terdeteksi
                                     Serial.println(F(">>> Tidak ada data dari Server !"));
+                                    butuhRetryCepat = true;
                                     dataReceived = true;
                                     break;
                               }
                         }
                   }
-                  if (!dataReceived) Serial.println(F(">>> Gagal mendapat respon dari Server !"));
+
+                  if (!dataReceived) {
+                        Serial.println(F(">>> Gagal mendapat respon dari Server !"));
+                        butuhRetryCepat = true;
+                  }
 
                   delay(500);
                   sim800.println(F("AT+CIPCLOSE"));  // Tutup koneksi agar server Python bisa proses handle()
@@ -261,9 +277,9 @@ int sisaRAM() {
 }
 
 bool hubungkanKePython() {
-      Serial.print(F("\n>>> RAM Sebelum Buffer Aktif\t: "));
-      Serial.print(sisaRAM());
-      Serial.println(F(" byte"));
+      //   Serial.print(F("\n>>> RAM Sebelum Buffer Aktif\t: "));
+      //   Serial.print(sisaRAM());
+      //   Serial.println(F(" byte"));
 
       while (sim800.available())
             sim800.read();  // Kuras buffer serial
@@ -279,21 +295,21 @@ bool hubungkanKePython() {
                   memset(tempBuffer, 0, sizeof(tempBuffer));
 
                   // Titik Pantau 3: Saat buffer aktif
-                  Serial.print(F(">>> RAM Setelah Buffer Aktif\t: "));
-                  Serial.print(sisaRAM());
-                  Serial.println(F(" byte"));
+                  //   Serial.print(F(">>> RAM Setelah Buffer Aktif\t: "));
+                  //   Serial.print(sisaRAM());
+                  //   Serial.println(F(" byte"));
 
                   int len = sim800.readBytes(tempBuffer, sizeof(tempBuffer) - 1);
                   tempBuffer[len] = '\0';
 
                   if (strstr(tempBuffer, "OK") || strstr(tempBuffer, "CONNECT") ||
                       strstr(tempBuffer, "ALREADY CONNECTED")) {
-                        Serial.println(F("\n>>> SUKSES Terhubung ke Server !"));
+                        Serial.println(F(">>> SUKSES Terhubung ke Server !"));
                         return true;
                   }
             }
       }
-      Serial.println(F("\n>>> GAGAL Terhubung ke Server !"));
+      Serial.println(F(">>> GAGAL Terhubung ke Server !"));
       return false;
 }
 
