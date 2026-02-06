@@ -90,7 +90,7 @@ void loop() {
 
             // Efek Kedip Standby: Indikator alat hidup tapi belum dipakai
             static unsigned long lastFlash = 0;
-            if (millis() - lastFlash > 250) {
+            if (millis() - lastFlash > 500) {
                   particleSensor.setPulseAmplitudeRed(20);
                   delay(20);
                   particleSensor.setPulseAmplitudeRed(0);
