@@ -71,9 +71,10 @@ void prosesKirimData() {
                   if (sim800.available()) {
                         char c = sim800.read();
                         if (c == '*') {  // Paket Data Terdeteksi
-                              String vitals = sim800.readStringUntil('#');
-                              Serial.print(F(">>> Feedback dari Server : "));
-                              Serial.println(vitals);
+                              String payload = sim800.readStringUntil('#');
+                              pecahDataFeedback(payload);
+                              // Serial.print(F(">>> Feedback dari Server : "));
+                              // Serial.println(vitals);
 
                               butuhRetryCepat = false;
                               dataReceived = true;
@@ -100,5 +101,58 @@ void prosesKirimData() {
             sedangIstirahat = true;
             waktuMulai = millis();
             particleSensor.setPulseAmplitudeRed(0);  // Matikan LED Red
+      }
+}
+
+void pecahDataFeedback(String raw) {
+      char buf[80];
+      raw.toCharArray(buf, sizeof(buf));
+
+      char *ptr = strtok(buf, ";");
+      if (ptr) dataVitals.hr = atof(ptr);
+
+      ptr = strtok(NULL, ";");
+      if (ptr) dataVitals.spo2 = atof(ptr);
+
+      ptr = strtok(NULL, ";");
+      if (ptr) dataVitals.sbp = atof(ptr);
+
+      ptr = strtok(NULL, ";");
+      if (ptr) dataVitals.dbp = atof(ptr);
+
+      ptr = strtok(NULL, ";");
+      if (ptr) dataVitals.hb = atof(ptr);
+
+      ptr = strtok(NULL, ";");
+      if (ptr) dataVitals.std = atoi(ptr);
+
+      if (dataVitals.hr > 0) {
+            // Print hasil ke Serial untuk verifikasi
+            Serial.println(F("\n======= HASIL ANALISA ======="));
+            Serial.print(F("HR\t: "));
+            Serial.print(dataVitals.hr, 2);
+            Serial.println(F("\t\tbpm"));
+            Serial.print(F("SPO2\t: "));
+            Serial.print(dataVitals.spo2, 2);
+            Serial.println(F("\t\t%"));
+            Serial.print(F("SBP\t: "));
+            Serial.print(dataVitals.sbp, 4);
+            Serial.println(F("\tmmHg"));
+            Serial.print(F("DBP\t: "));
+            Serial.print(dataVitals.dbp, 4);
+            Serial.println(F("\tmmHg"));
+            Serial.print(F("HB\t: "));
+            Serial.print(dataVitals.hb, 2);
+            Serial.println(F("\t\tg/dL"));
+            Serial.print(F("STD\t: "));
+            Serial.print(dataVitals.std);
+            Serial.println(F("\t\tcounts"));
+            Serial.println(F("============================="));
+      } else {
+            // Jika HR == 0, artinya analisis GAGAL (Sensor lepas/Noise)
+            Serial.print(F(">>> STD "));
+            Serial.print(dataVitals.std);  // Tampilkan tanpa desimal agar bersih
+
+            Serial.println(F(" counts, sinyal tidak stabil..."));
       }
 }

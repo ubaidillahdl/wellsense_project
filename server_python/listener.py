@@ -49,17 +49,10 @@ class TCPHandler(socketserver.BaseRequestHandler):
                     if feedback:
                         self.request.sendall(feedback.encode("utf-8"))
                         print(f"[*] Data Baru Terkirim: {feedback.strip()}")
-                    else:
-                        # Heartbeat wajib agar GPRS tetap 'keep-alive'
-                        self.request.sendall("H\n".encode("utf-8"))
 
                     # B. Logika Pesan Status (Independent: Selalu muncul)
                     if res and res["status"] != "VALID":
-                        msg = (
-                            "Letakkan Sensor pada Lengan..."
-                            if res["status"] == "SENSOR_OFF"
-                            else "Sinyal tidak stabil..."
-                        )
+                        msg = "Sinyal tidak stabil..."
                         print(f"\r[!] {msg}\n", end="", flush=True)
 
                     # C. Logika Print Tabel (Hanya jika Headless / Mode Terminal)

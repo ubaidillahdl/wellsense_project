@@ -19,5 +19,6 @@ void bangunSesi();
 // --- Network.cpp: Komunikasi SIM800C ---
 bool hubungkanKePython();
 void prosesKirimData();
+void pecahDataFeedback(String raw);
 
 #endif

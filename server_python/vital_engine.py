@@ -45,13 +45,10 @@ class VitalEngine:
         self.last_result = output
         self.graph_ready = True
 
-        # --- 2. GATEKEEPER (Cek Sensor) ---
-        if std_val < 5:
-            self.processor.reset_all_filters()
-            output["status"] = "SENSOR_OFF"
-            self.last_result = output
-            return output
+        self.feedback_str = f"*0.0;0.0;0.0;0.0;0.0;{std_val:.0f}#\n"
+        self.new_data_available = True
 
+        # --- 2. GATEKEEPER (Cek Sensor) ---
         if std_val > 150:
             output["status"] = "NOISY"
             self.last_result = output
@@ -112,7 +109,7 @@ class VitalEngine:
                     s_hb = self.processor.hb_filter.get_stable_value(hb)
 
                     # Siapkan feedback untuk Arduino via Listener
-                    self.feedback_str = f"*{s_hr:.1f};{s_spo2:.1f};{s_sbp:.0f};{s_dbp:.0f};{s_hb:.2f}#\n"
+                    self.feedback_str = f"*{s_hr:.4f};{s_spo2:.4f};{s_sbp:.4f};{s_dbp:.4f};{s_hb:.4f};{std_val:.0f}\n"
                     self.new_data_available = True
 
                     # Update output lengkap untuk Plotter

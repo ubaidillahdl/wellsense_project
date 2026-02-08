@@ -26,10 +26,20 @@ struct DataSensor {
       int16_t bufferRed[PANJANG_BUFFER];
 };
 
+struct HasilVitals {
+      float hr;
+      float spo2;
+      float sbp;
+      float dbp;
+      float hb;
+      int std;
+};
+
 // --- 3. DEKLARASI EXTERN (Variabel Global antar File) ---
 extern DesimasiState desimRed, desimIR;
 extern LpfState filterRed, filterIR;
 extern DataSensor wadah;
+extern HasilVitals dataVitals;
 
 extern uint8_t bufferIdx;
 extern int32_t rawRed, filteredRed, rawIR, filteredIR;

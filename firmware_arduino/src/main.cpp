@@ -12,6 +12,7 @@ SoftwareSerial sim800(rxSim, txSim);
 DataSensor wadah;
 DesimasiState desimRed, desimIR;
 LpfState filterRed, filterIR;
+HasilVitals dataVitals;
 
 bool dataReady = false;
 uint8_t bufferIdx = 0;
