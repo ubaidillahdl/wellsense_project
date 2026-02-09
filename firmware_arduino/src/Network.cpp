@@ -41,6 +41,11 @@ void prosesKirimData() {
       if (hubungkanKePython()) {
             // 1. Hitung total karakter yang akan dikirim (untuk AT+CIPSEND)
             long totalChar = 0;
+
+            // Tambahkan panjang Token + karakter pemisah '|'
+            totalChar += strlen(DEVICE_TOKEN);
+            totalChar += 1;  // Untuk karakter '|'
+
             for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
                   char buf[20];
                   totalChar +=
@@ -53,12 +58,19 @@ void prosesKirimData() {
             sim800.println(totalChar);
             delay(200);  // Jeda agar SIM800 siap menerima data
 
-            // 3. Kirim data sensor dari Buffer
+            // 3. KIRIM IDENTITAS (TOKEN)
+            sim800.print(DEVICE_TOKEN);
+            sim800.print(F("|"));  // Pemisah utama
+
+            // 4. Kirim data sensor dari Buffer
             for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
                   sim800.print(wadah.bufferIR[i]);
                   sim800.print(F(":"));
                   sim800.print(wadah.bufferRed[i]);
                   sim800.print(F(","));
+
+                  Serial.print(wadah.bufferIR[i]);
+                  Serial.print(", ");
             }
             sim800.print(F("\n"));
             Serial.println(F(">>> DATA Terkirim ke Server !"));

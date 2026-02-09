@@ -1,5 +1,7 @@
 import numpy as np
 from processor import Processor
+from database import WellSenseDB
+import json
 
 
 class VitalEngine:
@@ -10,10 +12,20 @@ class VitalEngine:
         self.last_result = None
         self.new_data_available = False  # Penanda untuk Arduino (Feedback)
         self.graph_ready = False  # Penanda untuk Plotter (Grafik)
+        self.db = WellSenseDB()
 
-    def process_package(self, red_data, ir_data):
+    def process_package(self, red_data, ir_data, device_token=None):
         """Alur: Pre-processing -> Gatekeeper -> ANN Analysis"""
-        if not ir_data:
+        if not ir_data or not device_token:
+            print("[!] Data atau Token kosong!")
+            return None
+
+        # --- 0. VALIDASI TOKEN (PINTU UTAMA) ---
+        # Cari tahu siapa pemilik token ini di database Laravel
+        device_info = self.db.get_device_info(device_token)
+
+        if not device_info:
+            print(f"[!] Akses Ditolak: Token {device_token} tidak terdaftar!")
             return None
 
         # --- 1. PRE-PROCESSING (Sinyal Mentah) ---
@@ -107,6 +119,24 @@ class VitalEngine:
                     s_sbp = self.processor.sbp_filter.get_stable_value(sbp)
                     s_dbp = self.processor.dbp_filter.get_stable_value(dbp)
                     s_hb = self.processor.hb_filter.get_stable_value(hb)
+
+                    # --- INTEGRASI KE DATABASE MILIK ABANG ---
+                    # Bungkus ke dictionary sesuai kebutuhan save_health_data
+                    vitals_dict = {
+                        "hr": s_hr,
+                        "spo2": s_spo2,
+                        "sbp": s_sbp,
+                        "dbp": s_dbp,
+                        "hb": s_hb,
+                    }
+
+                    # Ubah array sinyal ke string agar muat di LONGTEXT
+                    signals_dict = {
+                        "ir": json.dumps(ppg_ir.tolist()),
+                        "red": json.dumps(ppg_red.tolist()),
+                    }
+
+                    self.db.save_health_data(device_info, vitals_dict, signals_dict)
 
                     # Siapkan feedback untuk Arduino via Listener
                     self.feedback_str = f"*{s_hr:.4f};{s_spo2:.4f};{s_sbp:.4f};{s_dbp:.4f};{s_hb:.4f};{std_val:.0f}\n"
