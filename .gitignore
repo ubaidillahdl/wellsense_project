@@ -8,6 +8,7 @@ firmware_arduino/.vscode/ipch
 
 server_python/__pycache__/
 server_python/*.pyc
+server_python/venv/
 
 web_application/*.log
 web_application/.DS_Store
