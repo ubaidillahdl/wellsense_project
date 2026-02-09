@@ -69,8 +69,8 @@ void prosesKirimData() {
                   sim800.print(wadah.bufferRed[i]);
                   sim800.print(F(","));
 
-                  Serial.print(wadah.bufferIR[i]);
-                  Serial.print(", ");
+                  // Serial.print(wadah.bufferIR[i]);
+                  // Serial.print(", ");
             }
             sim800.print(F("\n"));
             Serial.println(F(">>> DATA Terkirim ke Server !"));
