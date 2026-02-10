@@ -35,7 +35,8 @@ bool hubungkanKePython() {
 }
 
 // --- PROSES KIRIM DATA & TERIMA FEEDBACK ---
-void prosesKirimData() {
+bool prosesKirimData() {
+      bool sukses = false;
       detachInterrupt(digitalPinToInterrupt(interruptPin));  // Stop sampling selama upload
 
       if (hubungkanKePython()) {

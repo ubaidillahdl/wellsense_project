@@ -36,11 +36,18 @@ struct HasilVitals {
       int std;
 };
 
+enum State {
+      ST_STANDBY,
+      ST_SAMPLING,
+      ST_KIRIM_DATA
+};
+
 // --- 3. DEKLARASI EXTERN (Variabel Global antar File) ---
 extern DesimasiState desimRed, desimIR;
 extern LpfState filterRed, filterIR;
 extern DataSensor wadah;
 extern HasilVitals dataVitals;
+extern State currentState;
 
 extern uint8_t bufferIdx;
 extern int32_t rawRed, filteredRed, rawIR, filteredIR;

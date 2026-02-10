@@ -68,11 +68,21 @@ void initSensorMAX() {
 // --- INDIKATOR STANDBY (LED Kedip) ---
 void prosesStandby() {
       static unsigned long lastFlash = 0;
-      if (millis() - lastFlash > 500) {
-            particleSensor.setPulseAmplitudeRed(20);  // Kedip redup
-            delay(20);
-            particleSensor.setPulseAmplitudeRed(0);
-            lastFlash = millis();
+      unsigned long currentMillis = millis();
+
+      // / Setiap 500ms, tentukan apakah lampu harus nyala atau mati
+      if (currentMillis - lastFlash > 500) {
+            lastFlash = currentMillis;
+
+            // Baca status LED saat ini, kalau 0 jadi 20, kalau 20 jadi 0 (Toggling)
+            static bool ledNyala = false;
+            ledNyala = !ledNyala;
+
+            if (ledNyala) {
+                  particleSensor.setPulseAmplitudeRed(20);  // Kedip redup
+            } else {
+                  particleSensor.setPulseAmplitudeRed(0);
+            }
       }
 }
 
@@ -81,7 +91,9 @@ void prosesSampling() {
       dataReady = false;
       particleSensor.check();
 
-      while (particleSensor.available()) {
+      // Ganti 'while' menjadi 'if' atau batasi pembacaannya
+      // Agar loop utama bisa segera mengecek kondisi jari lepas
+      if (particleSensor.available()) {
             rawRed = particleSensor.getFIFORed();
             rawIR = particleSensor.getFIFOIR();
 
@@ -111,25 +123,29 @@ void prosesSampling() {
             }
             particleSensor.nextSample();
       }
-      particleSensor.getINT1();  // Clear interrupt
+
+      // Penting: Hanya panggil ini jika FIFO sudah benar-benar kosong
+      if (!particleSensor.available()) {
+            particleSensor.getINT1();  // Clear interrupt
+      }
 }
 
 // --- MULAI SESI BARU ---
 void bangunSesi() {
+      // 1. Log ke Serial (Tetap pakai F agar hemat RAM)
       Serial.println(butuhRetryCepat ? F("\n>>> Kegagalan Terdeteksi: Mencoba ulang...") : F("\n>>> Memulai sesi pengukuran baru..."));
 
-      if (butuhRetryCepat) butuhRetryCepat = false;
+      // 2. Hardware: Nyalakan LED Red
+      particleSensor.setPulseAmplitudeRed(255);
 
-      particleSensor.setPulseAmplitudeRed(255);  // LED Red Full Power
-
-      // Flush sisa data di FIFO sensor
+      // 3. Hardware: Bersihkan sisa data (Flush FIFO)
       particleSensor.check();
       while (particleSensor.available()) particleSensor.nextSample();
       particleSensor.getINT1();
 
+      // 4. Aktifkan Interupsi Sampling
       attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
 
-      sedangIstirahat = false;  // Masuk mode aktif
-      waktuMulaiSesi = millis();
-      bufferIdx = 0;  // Reset index buffer
+      // 5. Catat waktu mulai untuk monitoring durasi sesi
+      waktuMulai = millis();
 }
