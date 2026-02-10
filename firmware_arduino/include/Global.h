@@ -52,7 +52,6 @@ extern State currentState;
 extern uint8_t bufferIdx;
 extern int32_t rawRed, filteredRed, rawIR, filteredIR;
 extern unsigned long waktuMulai, waktuMulaiSesi;
-extern bool sedangIstirahat;
 extern bool butuhRetryCepat;
 extern bool dataReady;
 
