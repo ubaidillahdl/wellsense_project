@@ -40,16 +40,21 @@ void prosesKirimData() {
 
       if (hubungkanKePython()) {
             // 1. Hitung total karakter yang akan dikirim (untuk AT+CIPSEND)
-            long totalChar = 0;
+            // long totalChar = 0;
 
             // Tambahkan panjang Token + karakter pemisah '|'
-            totalChar += strlen(DEVICE_TOKEN);
-            totalChar += 1;  // Untuk karakter '|'
+            long totalChar = strlen(DEVICE_TOKEN) + 1;
+            // totalChar += 1;  // Untuk karakter '|'
 
             for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-                  char buf[20];
-                  totalChar +=
-                      sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
+                  totalChar += String(wadah.bufferIR[i]).length();
+                  totalChar += 1;
+                  totalChar += String(wadah.bufferRed[i]).length();
+                  totalChar += 1;
+
+                  // char buf[20];
+                  // totalChar +=
+                  //     sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
             }
             totalChar += 1;  // Untuk newline '\n'
 
