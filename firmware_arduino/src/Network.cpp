@@ -1,7 +1,71 @@
 #include "Functions.h"
 #include "Global.h"
 
-// --- MEMBUKA KONEKSI TCP ---
+bool prosesKirimData() {
+      bool sukses = false;  // Default gagal
+
+      if (hubungkanKePython()) {
+            // 1. Hitung total karakter untuk AT+CIPSEND
+            long totalChar = strlen(DEVICE_TOKEN) + 1;
+            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
+                  char buf[20];
+                  totalChar +=
+                      sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
+            }
+            totalChar += 1;  // Newline (\n)
+
+            // 2. Beritahu SIM800 panjang data
+            sim800.print("AT+CIPSEND=");
+            sim800.println(totalChar);
+            delay(200);
+
+            // 3. Kirim Token & Data Buffer
+            sim800.print(DEVICE_TOKEN);
+            sim800.print(F("|"));
+            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
+                  sim800.print(wadah.bufferIR[i]);
+                  sim800.print(F(":"));
+                  sim800.print(wadah.bufferRed[i]);
+                  sim800.print(F(","));
+            }
+            sim800.print(F("\n"));
+            Serial.println(F(">>> DATA Terkirim ke Server !"));
+
+            // 4. Tunggu Feedback Server (5 detik)
+            unsigned long waitReply = millis();
+            bool dataReceived = false;
+
+            while (millis() - waitReply < 5000) {
+                  if (sim800.available()) {
+                        char c = sim800.read();
+                        if (c == '*') {  // Paket terdeteksi
+                              char feedbackBuf[64];
+                              // Bersihkan buffer dari sisa data lama
+                              memset(feedbackBuf, 0, sizeof(feedbackBuf));
+
+                              // Baca data dari SIM800
+                              uint8_t len = sim800.readBytesUntil('#', feedbackBuf, sizeof(feedbackBuf) - 1);
+                              feedbackBuf[len] = '\0';  // Kunci akhir string
+
+                              if (!pecahDataFeedback(feedbackBuf)) butuhRetryCepat = true;
+
+                              dataReceived = true;
+                              sukses = true;  // Sukses total
+                              break;
+                        }
+                  }
+            }
+
+            if (!dataReceived) {
+                  Serial.println(F(">>> GAGAL mendapat respon Server !"));
+                  butuhRetryCepat = true;
+            }
+            delay(500);
+            sim800.println(F("AT+CIPCLOSE"));  // Tutup koneksi TCP
+      }
+      return sukses;
+}
+
 bool hubungkanKePython() {
       // Kuras sisa data di buffer serial SIM800
       while (sim800.available()) sim800.read();
@@ -34,92 +98,8 @@ bool hubungkanKePython() {
       return false;
 }
 
-// --- PROSES KIRIM DATA & TERIMA FEEDBACK ---
-bool prosesKirimData() {
-      bool sukses = false;
-      detachInterrupt(digitalPinToInterrupt(interruptPin));  // Stop sampling selama upload
-
-      if (hubungkanKePython()) {
-            // 1. Hitung total karakter yang akan dikirim (untuk AT+CIPSEND)
-            long totalChar = 0;
-
-            // Tambahkan panjang Token + karakter pemisah '|'
-            totalChar += strlen(DEVICE_TOKEN);
-            totalChar += 1;  // Untuk karakter '|'
-
-            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-                  char buf[20];
-                  totalChar +=
-                      sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
-            }
-            totalChar += 1;  // Untuk newline '\n'
-
-            // 2. Beritahu SIM800 jumlah data yang akan dikirim
-            sim800.print("AT+CIPSEND=");
-            sim800.println(totalChar);
-            delay(200);  // Jeda agar SIM800 siap menerima data
-
-            // 3. KIRIM IDENTITAS (TOKEN)
-            sim800.print(DEVICE_TOKEN);
-            sim800.print(F("|"));  // Pemisah utama
-
-            // 4. Kirim data sensor dari Buffer
-            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-                  sim800.print(wadah.bufferIR[i]);
-                  sim800.print(F(":"));
-                  sim800.print(wadah.bufferRed[i]);
-                  sim800.print(F(","));
-
-                  // Serial.print(wadah.bufferIR[i]);
-                  // Serial.print(", ");
-            }
-            sim800.print(F("\n"));
-            Serial.println(F(">>> DATA Terkirim ke Server !"));
-
-            // 4. Tunggu feedback hasil olah data dari Python
-            unsigned long waitReply = millis();
-            bool dataReceived = false;
-
-            while (millis() - waitReply < 5000) {  // Timeout 5 detik
-                  if (sim800.available()) {
-                        char c = sim800.read();
-                        if (c == '*') {  // Paket Data Terdeteksi
-                              String payload = sim800.readStringUntil('#');
-                              pecahDataFeedback(payload);
-                              // Serial.print(F(">>> Feedback dari Server : "));
-                              // Serial.println(vitals);
-
-                              butuhRetryCepat = false;
-                              dataReceived = true;
-                              break;
-                        } else if (c == 'H') {  // Heartbeat/Server Ready tapi data kosong
-                              Serial.println(F(">>> Tidak ada data dari Server !"));
-                              butuhRetryCepat = true;
-                              dataReceived = true;
-                              break;
-                        }
-                  }
-            }
-
-            if (!dataReceived) {
-                  Serial.println(F(">>> Gagal mendapat respon dari Server !"));
-                  butuhRetryCepat = true;
-            }
-
-            delay(500);
-            sim800.println(F("AT+CIPCLOSE"));  // Tutup koneksi TCP
-
-            // --- RESET STATE UNTUK SESI BERIKUTNYA ---
-            bufferIdx = 0;
-            sedangIstirahat = true;
-            waktuMulai = millis();
-            particleSensor.setPulseAmplitudeRed(0);  // Matikan LED Red
-      }
-}
-
-void pecahDataFeedback(String raw) {
-      char buf[80];
-      raw.toCharArray(buf, sizeof(buf));
+bool pecahDataFeedback(char *buf) {
+      bool hasilAnalisa = true;
 
       char *ptr = strtok(buf, ";");
       if (ptr) dataVitals.hr = atof(ptr);
@@ -162,10 +142,11 @@ void pecahDataFeedback(String raw) {
             Serial.println(F("\t\tcounts"));
             Serial.println(F("============================="));
       } else {
-            // Jika HR == 0, artinya analisis GAGAL (Sensor lepas/Noise)
             Serial.print(F(">>> STD "));
             Serial.print(dataVitals.std);  // Tampilkan tanpa desimal agar bersih
+            Serial.println(F(" counts, sinyal tidak stabil !"));
 
-            Serial.println(F(" counts, sinyal tidak stabil..."));
+            hasilAnalisa = false;
       }
+      return hasilAnalisa;
 }

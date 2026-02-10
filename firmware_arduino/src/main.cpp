@@ -19,8 +19,6 @@ bool dataReady = false;
 uint8_t bufferIdx = 0;
 int32_t rawRed, filteredRed, rawIR, filteredIR;
 unsigned long waktuMulai = 0;
-unsigned long waktuMulaiSesi = 0;
-bool sedangIstirahat = false;
 bool butuhRetryCepat = false;
 
 void setup() {
@@ -31,93 +29,54 @@ void setup() {
 void loop() {
       switch (currentState) {
             case ST_STANDBY: {
-                  unsigned long durasiTunggu = butuhRetryCepat ? 200 : 3000;
+                  // Tentukan cooldown: 0.2 detik jika gagal, 3 detik jika normal
+                  unsigned long durasiTunggu = butuhRetryCepat ? 200 : 6000;
 
-                  // Logika: Hanya masuk sampling jika SUDAH cukup waktu DAN ADA tangan
-                  if ((millis() - waktuMulai >= durasiTunggu) && adaTangan()) {
-                        butuhRetryCepat = false;
-                        bufferIdx = 0;
-                        bangunSesi();
-                        currentState = ST_SAMPLING;
+                  if (adaTangan()) {
+                        // Cek apakah sudah melewati masa tunggu (cooldown)
+                        if (millis() - waktuMulai >= durasiTunggu) {
+                              bangunSesi();
+                              butuhRetryCepat = false;
+                              waktuMulai = millis();
+                              bufferIdx = 0;
+                              currentState = ST_SAMPLING;  // Mulai ambil data
+                        }
                   } else {
-                        // Jika salah satu syarat di atas tidak terpenuhi, tetap standby
-                        prosesStandby();
+                        prosesStandby();  // LED kedip indikator standby
                   }
             } break;
 
             case ST_SAMPLING: {
-                  // 1. Proteksi: Kalau jari tiba-tiba lepas saat sampling
+                  // Keamanan: Jika jari lepas, batalkan dan balik ke standby
                   if (!adaTangan()) {
-                        Serial.println(F("\n>>> Jari terlepas! Membatalkan sesi..."));
-
-                        // Bersihkan keadaan sebelum balik ke Standby
                         detachInterrupt(digitalPinToInterrupt(interruptPin));
-                        particleSensor.setPulseAmplitudeRed(0);  // Matikan LED Red
-
-                        waktuMulai = millis();  // Mulai hitung cooldown 3 detik
+                        waktuMulai = millis();
                         currentState = ST_STANDBY;
                         break;
                   }
 
-                  // 2. Sampling: Jika ada interupsi data dari sensor (dataReady set di ISR)
-                  if (dataReady) {
-                        prosesSampling();  // Di sini terjadi filter & downsampling
-                  }
+                  // Ambil data jika interupsi sensor menyala (flag dari ISR)
+                  if (dataReady) prosesSampling();
 
-                  // 3. Cek Selesai: Apakah data sudah terkumpul sesuai PANJANG_BUFFER?
+                  // Cek apakah data sudah terkumpul penuh sesuai target
                   if (bufferIdx >= PANJANG_BUFFER) {
-                        Serial.println(F("\n>>> Sampling selesai. Masuk ke transmisi..."));
-
-                        // Matikan interupsi agar tidak sampling lagi saat kirim data
                         detachInterrupt(digitalPinToInterrupt(interruptPin));
-
-                        currentState = ST_KIRIM_DATA;
+                        currentState = ST_KIRIM_DATA;  // Lanjut kirim ke Server
                   }
-
             } break;
 
             case ST_KIRIM_DATA: {
-                  // 1. Matikan semua gangguan (Interupsi sensor sudah mati di step sebelumnya)
-                  Serial.println(F("\n>>> Memulai Transmisi SIM800C..."));
-
-                  // 2. Jalankan fungsi kirim
-                  // Kita buat fungsi ini mengembalikan 'true' jika server balas OK
+                  // Jalankan fungsi kirim (outputnya bool: true/false)
                   if (prosesKirimData()) {
-                        Serial.println(F(">>> Server: Data Diterima."));
+                        // Sukses: (Nanti tambahkan logic pindah ke ST_DISPLAY_HASIL)
+
+                        // bufferIdx = 0;
+                        waktuMulai = millis();
+                        currentState = ST_STANDBY;
+                  } else {
+                        // Gagal: Balik ke standby untuk coba lagi nanti
+                        currentState = ST_STANDBY;
                   }
-            }
+            } break;
       }
-
-      // // --- 0. CEK KEBERADAAN TANGAN (Proximity) ---
-      // if (!adaTangan()) {
-      //       if (!sedangIstirahat) {
-      //             bufferIdx = 0;
-      //             sedangIstirahat = true;
-      //             detachInterrupt(digitalPinToInterrupt(interruptPin));
-      //             particleSensor.setPulseAmplitudeRed(0);
-      //       }
-      //       prosesStandby();  // Idle mode
-      //       return;
-      // }
-
-      // // --- 1. JEDA / COOLDOWN (Manajemen Sesi) ---
-      // if (sedangIstirahat) {
-      //       // Retry cepat jika error, atau 3 detik jika sesi baru
-      //       unsigned long durasiTunggu = butuhRetryCepat ? 200 : 3000;
-      //       if (millis() - waktuMulai >= durasiTunggu) {
-      //             bangunSesi();  // Re-aktifkan sensor & interrupt
-      //       } else {
-      //             return;  // Masih dalam masa tunggu
-      //       }
-      // }
-
-      // // --- 2. SAMPLING DATA (Interupsi 400Hz) ---
-      // if (dataReady) {
-      //       prosesSampling();  // Low Pass Filter & Downsampling ke 50Hz
-      // }
-
-      // // --- 3. TRANSMISI DATA ---
-      // if (bufferIdx >= PANJANG_BUFFER) {
-      //       prosesKirimData();  // Upload ke Server via SIM800C
-      // }
 }
