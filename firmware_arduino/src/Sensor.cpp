@@ -1,7 +1,23 @@
 #include "Functions.h"
 #include "Global.h"
 
-// --- CEK DETEKSI OBJEK ---
+void initSensorMAX() {
+      if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
+            Serial.println(F("Sensor tidak ditemukan"));
+            while (1)
+                  ;  // Berhenti jika sensor gagal init
+      }
+
+      // Config: LED 255 (Full), 400Hz Sample, Pulse Width 411, Range 16384
+      particleSensor.setup(255, 1, 2, 400, 411, 16384);
+      particleSensor.enableDATARDY();
+      particleSensor.getINT1();  // Clear interrupt flag
+      attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
+
+      // particleSensor.setPulseAmplitudeRed(0);   // Red mati saat standby
+      particleSensor.setPulseAmplitudeIR(255);  // IR tetap nyala untuk deteksi tangan
+}
+
 bool adaTangan() {
       long currentIR = particleSensor.getIR();  // Baca IR instan
       static unsigned long lastUpdate = 0;
@@ -19,7 +35,80 @@ bool adaTangan() {
       }
 }
 
-// --- LOGIKA DESIMASI (400Hz -> 50Hz) ---
+void bangunSesi() {
+      // Tampilkan status di Serial (VIP atau Normal)
+      Serial.println(butuhRetryCepat ? F("\n>>> Pengukuran ulang...") : F("\n>>> Pengukuran baru..."));
+
+      // Reset flag retry setelah berhasil masuk ke sesi baru
+      if (butuhRetryCepat) butuhRetryCepat = false;
+
+      // Nyalakan LED Red sensor dengan kekuatan penuh
+      particleSensor.setPulseAmplitudeRed(255);
+
+      // --- PROSES FLUSH (Pembersihan Sisa Data) ---
+      particleSensor.check();
+      while (particleSensor.available()) particleSensor.nextSample();  // Buang data lama di buffer sensor
+      particleSensor.getINT1();
+
+      // Pasang kembali interupsi untuk mulai mendeteksi data baru
+      attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
+}
+
+void prosesStandby() {
+      static unsigned long lastFlash = 0;  // Simpan waktu terakhir kedip
+      unsigned long currentMillis = millis();
+
+      // Atur interval kedip LED setiap 500ms (0.5 detik)
+      if (currentMillis - lastFlash > 500) {
+            lastFlash = currentMillis;
+
+            static bool ledNyala = false;
+            ledNyala = !ledNyala;  // Tukar status ON/OFF
+
+            if (ledNyala) {
+                  // Nyalakan LED Red redup (power 20) sebagai indikator standby
+                  particleSensor.setPulseAmplitudeRed(20);
+            } else {
+                  // Matikan LED Red
+                  particleSensor.setPulseAmplitudeRed(0);
+            }
+      }
+}
+
+void prosesSampling() {
+      dataReady = false;
+      particleSensor.check();
+
+      while (particleSensor.available()) {
+            rawRed = particleSensor.getFIFORed();
+            rawIR = particleSensor.getFIFOIR();
+
+            // LPF Digital (Integer math): Meredam noise frekuensi tinggi
+            filteredRed = (8815 * filterRed.y1 + 592 * rawRed + 592 * filterRed.x1) / 10000;
+            filteredIR = (8815 * filterIR.y1 + 592 * rawIR + 592 * filterIR.x1) / 10000;
+
+            // Simpan history filter
+            filterRed.x1 = rawRed;
+            filterRed.y1 = filteredRed;
+            filterIR.x1 = rawIR;
+            filterIR.y1 = filteredIR;
+
+            // Turunkan rate data ke 50Hz
+            int16_t outRed, outIR;
+            updateDesimasi(desimIR, filteredIR, outIR);
+
+            if (updateDesimasi(desimRed, filteredRed, outRed)) {
+                  if (bufferIdx < PANJANG_BUFFER) {
+                        wadah.bufferRed[bufferIdx] = outRed;
+                        wadah.bufferIR[bufferIdx] = outIR;
+                        bufferIdx++;
+                  }
+            }
+            particleSensor.nextSample();
+      }
+      particleSensor.getINT1();  // Clear interrupt
+}
+
 bool updateDesimasi(DesimasiState &d, int32_t inputVal, int16_t &outputVal) {
       d.s1Sum += inputVal;
       d.s1Count++;
@@ -45,91 +134,4 @@ bool updateDesimasi(DesimasiState &d, int32_t inputVal, int16_t &outputVal) {
             }
       }
       return false;
-}
-
-// --- INISIALISASI SENSOR ---
-void initSensorMAX() {
-      if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
-            Serial.println(F("Sensor tidak ditemukan"));
-            while (1)
-                  ;  // Berhenti jika sensor gagal init
-      }
-
-      // Config: LED 255 (Full), 400Hz Sample, Pulse Width 411, Range 16384
-      particleSensor.setup(255, 1, 2, 400, 411, 16384);
-      particleSensor.enableDATARDY();
-      particleSensor.getINT1();  // Clear interrupt flag
-      attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
-
-      particleSensor.setPulseAmplitudeRed(0);   // Red mati saat standby
-      particleSensor.setPulseAmplitudeIR(255);  // IR tetap nyala untuk deteksi tangan
-}
-
-// --- INDIKATOR STANDBY (LED Kedip) ---
-void prosesStandby() {
-      static unsigned long lastFlash = 0;
-      if (millis() - lastFlash > 500) {
-            particleSensor.setPulseAmplitudeRed(20);  // Kedip redup
-            delay(20);
-            particleSensor.setPulseAmplitudeRed(0);
-            lastFlash = millis();
-      }
-}
-
-// --- PROSES PENGAMBILAN DATA ---
-void prosesSampling() {
-      dataReady = false;
-      particleSensor.check();
-
-      while (particleSensor.available()) {
-            rawRed = particleSensor.getFIFORed();
-            rawIR = particleSensor.getFIFOIR();
-
-            // LPF Digital (Integer math): Meredam noise frekuensi tinggi
-            filteredRed = (8815 * filterRed.y1 + 592 * rawRed + 592 * filterRed.x1) / 10000;
-            filteredIR = (8815 * filterIR.y1 + 592 * rawIR + 592 * filterIR.x1) / 10000;
-
-            // Simpan history filter
-            filterRed.x1 = rawRed;
-            filterRed.y1 = filteredRed;
-            filterIR.x1 = rawIR;
-            filterIR.y1 = filteredIR;
-
-            // Turunkan rate data ke 50Hz
-            int16_t outRed, outIR;
-            updateDesimasi(desimIR, filteredIR, outIR);
-
-            if (updateDesimasi(desimRed, filteredRed, outRed)) {
-                  // Abaikan data 1 detik pertama agar pembacaan stabil
-                  if (millis() - waktuMulaiSesi >= 1000) {
-                        if (bufferIdx < PANJANG_BUFFER) {
-                              wadah.bufferRed[bufferIdx] = outRed;
-                              wadah.bufferIR[bufferIdx] = outIR;
-                              bufferIdx++;
-                        }
-                  }
-            }
-            particleSensor.nextSample();
-      }
-      particleSensor.getINT1();  // Clear interrupt
-}
-
-// --- MULAI SESI BARU ---
-void bangunSesi() {
-      Serial.println(butuhRetryCepat ? F("\n>>> Kegagalan Terdeteksi: Mencoba ulang...") : F("\n>>> Memulai sesi pengukuran baru..."));
-
-      if (butuhRetryCepat) butuhRetryCepat = false;
-
-      particleSensor.setPulseAmplitudeRed(255);  // LED Red Full Power
-
-      // Flush sisa data di FIFO sensor
-      particleSensor.check();
-      while (particleSensor.available()) particleSensor.nextSample();
-      particleSensor.getINT1();
-
-      attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, FALLING);
-
-      sedangIstirahat = false;  // Masuk mode aktif
-      waktuMulaiSesi = millis();
-      bufferIdx = 0;  // Reset index buffer
 }
