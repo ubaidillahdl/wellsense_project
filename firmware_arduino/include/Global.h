@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <MAX30105.h>
 #include <SoftwareSerial.h>
+#include <U8g2lib.h>
 
 // --- 1. KONFIGURASI JARINGAN & BUFFER ---
 #define PANJANG_BUFFER 150         // 150 data @50Hz = 3 detik rekaman
@@ -39,7 +40,8 @@ struct HasilVitals {
 enum State {
       ST_STANDBY,
       ST_SAMPLING,
-      ST_KIRIM_DATA
+      ST_KIRIM_DATA,
+      ST_DISPLAY
 };
 
 // --- 3. DEKLARASI EXTERN (Variabel Global antar File) ---
@@ -58,6 +60,7 @@ extern bool dataReady;
 // --- 4. OBJEK PERIPHERAL ---
 extern MAX30105 particleSensor;
 extern SoftwareSerial sim800;
+extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2;
 
 // --- 5. KONFIGURASI PIN ---
 const byte interruptPin = 3;  // Pin INT dari MAX30105

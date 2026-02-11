@@ -7,6 +7,7 @@
 // --- Inisialisasi Objek ---
 MAX30105 particleSensor;
 SoftwareSerial sim800(rxSim, txSim);
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
 
 // --- Variabel Global & State ---
 DataSensor wadah;
@@ -22,7 +23,8 @@ unsigned long waktuMulai = 0;
 bool butuhRetryCepat = false;
 
 void setup() {
-      initSistem();     // Serial, I2C, Pin mode
+      initSistem();  // Serial, I2C, Pin mode
+      initDisp();
       initSensorMAX();  // Konfigurasi register MAX30105
 }
 
@@ -35,6 +37,7 @@ void loop() {
                   if (adaTangan()) {
                         // Cek apakah sudah melewati masa tunggu (cooldown)
                         if (millis() - waktuMulai >= durasiTunggu) {
+                              dispClear();
                               bangunSesi();
                               butuhRetryCepat = false;
                               waktuMulai = millis();
@@ -42,6 +45,7 @@ void loop() {
                               currentState = ST_SAMPLING;  // Mulai ambil data
                         }
                   } else {
+                        tampilkanPesanStandby();
                         prosesStandby();  // LED kedip indikator standby
                   }
             } break;
@@ -68,14 +72,22 @@ void loop() {
             case ST_KIRIM_DATA: {
                   // Jalankan fungsi kirim (outputnya bool: true/false)
                   if (prosesKirimData()) {
-                        // Sukses: (Nanti tambahkan logic pindah ke ST_DISPLAY_HASIL)
-
-                        // bufferIdx = 0;
+                        // SUKSES: Pindah ke DISPLAY, bukan standby
                         waktuMulai = millis();
-                        currentState = ST_STANDBY;
+                        currentState = ST_DISPLAY;
                   } else {
                         // Gagal: Balik ke standby untuk coba lagi nanti
                         currentState = ST_STANDBY;
+                  }
+            } break;
+
+            case ST_DISPLAY: {
+                  // tampilkanGrafikPPGAuto();
+
+                  // Kasih waktu user baca hasil (misal 5 detik) sebelum balik standby
+                  if (millis() - waktuMulai > 5000) {
+                        currentState = ST_STANDBY;
+                        waktuMulai = millis();
                   }
             } break;
       }

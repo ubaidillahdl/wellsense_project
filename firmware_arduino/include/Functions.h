@@ -21,4 +21,10 @@ bool hubungkanKePython();
 bool prosesKirimData();
 bool pecahDataFeedback(char *buf);
 
+// --- Display.cpp
+void initDisp();
+void dispClear();
+void tampilkanPesanStandby();
+// void tampilkanGrafikPPGAuto();
+
 #endif
