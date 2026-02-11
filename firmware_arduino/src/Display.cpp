@@ -2,69 +2,90 @@
 #include "Global.h"
 
 void initDisp() {
-      u8g2.begin();
+      Wire.begin();
+      Wire.setClock(400000L);
+      oled.begin(&Adafruit128x64, I2C_ADDRESS);
 
-      u8g2.setFont(u8g2_font_ncenB14_tr);
-      u8g2.firstPage();
-      do {
-            u8g2.setCursor(17, 40);
-            u8g2.print(F("Wellsense"));
-      } while (u8g2.nextPage());
+      oled.setCursor(13, 3);
+      oled.setFont(Cooper19);
+      oled.print(F("Wellsense"));
 
-      delay(5000);
-      dispClear();
+      delay(3000);
+      oled.clear();
 }
 
-void dispClear() {
-      u8g2.firstPage();
-      do {
-      } while (u8g2.nextPage());
+void tampilVitals() {
+      uint8_t sbp = (uint8_t)ceil(dataVitals.sbp);
+      uint8_t dbp = (uint8_t)ceil(dataVitals.dbp);
+      uint8_t hr = constrain((uint8_t)ceil(dataVitals.hr), 0, 99);
+      uint8_t spo2 = constrain((uint8_t)ceil(dataVitals.spo2), 0, 99);
+      uint8_t hb = constrain((uint8_t)ceil(dataVitals.hb), 0, 99);
+
+      // --- SISI KIRI (SBP & DBP) ---
+      // Tetap hapus total karena anchorX (label) bisa geser
+      int anchorX = (sbp >= 100 || dbp >= 100) ? 38 : 26;
+      for (uint8_t r = 3; r <= 7; r++) {
+            oled.clearField(0, r, 65);
+      }
+
+      oled.setFont(lcdnums12x16);
+      oled.setCursor(0, 3);
+      if (sbp < 100 && anchorX == 38) oled.print(F(" "));
+      oled.print(sbp);
+      oled.setCursor(0, 6);
+      if (dbp < 100 && anchorX == 38) oled.print(F(" "));
+      oled.print(dbp);
+
+      oled.setFont(font5x7);
+      oled.setCursor(anchorX, 3);
+      oled.print(F("SBP"));
+      oled.setCursor(anchorX, 4);
+      oled.print(F("mmHg"));
+      oled.setCursor(anchorX, 6);
+      oled.print(F("DBP"));
+      oled.setCursor(anchorX, 7);
+      oled.print(F("mmHg"));
+
+      // --- SISI KANAN (HR, SPO2, HB) ---
+      // Label statis ditulis SEBELUMNYA (misal di setup atau saat jari masuk)
+      // Di sini kita HANYA update angkanya saja agar label gausah dihapus
+
+      oled.setFont(lcdnums12x16);
+
+      // 1. Update Angka HR (Kolom 79, Baris 0-1)
+      oled.clearField(79, 0, 24);
+      oled.clearField(79, 1, 24);  // Cuma hapus area angka (2 digit = 24px)
+      oled.setCursor(79, 0);
+      if (hr < 10) oled.print(F(" "));
+      oled.print(hr);
+
+      // 2. Update Angka SPO2 (Kolom 79, Baris 3-4)
+      oled.clearField(79, 3, 24);
+      oled.clearField(79, 4, 24);
+      oled.setCursor(79, 3);
+      if (spo2 < 10) oled.print(F(" "));
+      oled.print(spo2);
+
+      // 3. Update Angka HB (Kolom 79, Baris 6-7)
+      oled.clearField(79, 6, 24);
+      oled.clearField(79, 7, 24);
+      oled.setCursor(79, 6);
+      if (hb < 10) oled.print(F(" "));
+      oled.print(hb);
+
+      // --- LABEL KANAN (TULIS ULANG TANPA CLEAR) ---
+      // Tujuannya agar label tetap muncul jika layar sempat terhapus di state sebelumnya
+      oled.setFont(font5x7);
+      oled.setCursor(105, 0);
+      oled.print(F("HR"));
+      oled.setCursor(105, 1);
+      oled.print(F("bpm"));
+      oled.setCursor(105, 3);
+      oled.print(F("SPO2"));
+      oled.setCursor(105, 4);
+      oled.print(F("%"));
+      oled.setCursor(105, 6);
+      oled.print(F("HB"));
+      oled.setCursor(105, 7);
+      oled.print(F("g/dL"));
 }
-
-void tampilkanPesanStandby() {
-      static unsigned long lastUpdate = 0;
-      // Update layar tiap 1 detik saja agar tidak menghambat loop utama
-      if (millis() - lastUpdate < 1000) return;
-      lastUpdate = millis();
-
-      u8g2.firstPage();
-      do {
-            u8g2.setFont(u8g2_font_6x12_tf);  // Font simpel & hemat RAM
-            u8g2.drawStr(25, 15, "WELLSENSE v1.0");
-
-            u8g2.drawHLine(0, 20, 128);  // Garis pemisah
-
-            u8g2.setFont(u8g2_font_7x13_tf);
-            u8g2.drawStr(15, 45, "Tempelkan Jari");
-            u8g2.drawStr(25, 60, "Untuk Mulai");
-      } while (u8g2.nextPage());
-}
-
-// void tampilkanGrafikPPGAuto() {
-//       int16_t minVal = 32767, maxVal = -32768;
-
-//       // 1. Cari Min/Max untuk scaling dinamis
-//       for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-//             if (wadah.bufferIR[i] < minVal) minVal = wadah.bufferIR[i];
-//             if (wadah.bufferIR[i] > maxVal) maxVal = wadah.bufferIR[i];
-//       }
-
-//       // 2. Proteksi: Jika garis datar (no signal), kasih jarak biar gak div by zero
-//       if (maxVal == minVal) maxVal = minVal + 10;
-
-//       // 3. Gambar ke OLED
-//       u8g2.firstPage();
-//       do {
-//             u8g2.setFont(u8g2_font_6x10_tf);
-//             u8g2.drawStr(0, 10, "PPG Signal");  // Judul kecil biar rapi
-
-//             for (uint8_t i = 0; i < PANJANG_BUFFER - 1; i++) {
-//                   // Map data ke tinggi layar (OLED biasanya 64px, kita pakai area 15-60)
-//                   uint8_t y1 = map(wadah.bufferIR[i], minVal, maxVal, 60, 15);
-//                   uint8_t y2 = map(wadah.bufferIR[i + 1], minVal, maxVal, 60, 15);
-
-//                   // x-scale: Jika PANJANG_BUFFER > lebar OLED (128), i perlu dikali scale
-//                   u8g2.drawLine(i, y1, i + 1, y2);
-//             }
-//       } while (u8g2.nextPage());
-// }

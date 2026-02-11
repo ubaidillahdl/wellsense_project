@@ -23,8 +23,6 @@ bool pecahDataFeedback(char *buf);
 
 // --- Display.cpp
 void initDisp();
-void dispClear();
-void tampilkanPesanStandby();
-// void tampilkanGrafikPPGAuto();
+void tampilVitals();
 
 #endif

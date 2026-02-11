@@ -4,13 +4,17 @@
 #include <Arduino.h>
 #include <MAX30105.h>
 #include <SoftwareSerial.h>
-#include <U8g2lib.h>
+
+#include "SSD1306Ascii.h"
+#include "SSD1306AsciiWire.h"
 
 // --- 1. KONFIGURASI JARINGAN & BUFFER ---
 #define PANJANG_BUFFER 150         // 150 data @50Hz = 3 detik rekaman
 #define SERVER_IP "192.168.0.105"  // IP Server Python (sesuaikan dengan WiFi/LAN)
 #define SERVER_PORT "5005"         // Port socket Python
 #define DEVICE_TOKEN "WS-01-PROTOTYPE"
+
+#define I2C_ADDRESS 0x3C
 
 // --- 2. DEFINISI STRUKTUR DATA (State Management) ---
 struct DesimasiState {
@@ -38,6 +42,7 @@ struct HasilVitals {
 };
 
 enum State {
+      ST_PERTAMA,
       ST_STANDBY,
       ST_SAMPLING,
       ST_KIRIM_DATA,
@@ -60,7 +65,7 @@ extern bool dataReady;
 // --- 4. OBJEK PERIPHERAL ---
 extern MAX30105 particleSensor;
 extern SoftwareSerial sim800;
-extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2;
+extern SSD1306AsciiWire oled;
 
 // --- 5. KONFIGURASI PIN ---
 const byte interruptPin = 3;  // Pin INT dari MAX30105
