@@ -7,76 +7,95 @@
 // --- Inisialisasi Objek ---
 MAX30105 particleSensor;
 SoftwareSerial sim800(rxSim, txSim);
+SSD1306AsciiWire oled;
 
 // --- Variabel Global & State ---
 DataSensor wadah;
 DesimasiState desimRed, desimIR;
 LpfState filterRed, filterIR;
 HasilVitals dataVitals;
-State currentState = ST_STANDBY;
+SystemState systemState = SYS_IDLE;
+ScreenState screenState = SCR_READY;
+ScreenState lastScreen = SCR_READY;
 
 bool dataReady = false;
 uint8_t bufferIdx = 0;
 int32_t rawRed, filteredRed, rawIR, filteredIR;
 unsigned long waktuMulai = 0;
 bool butuhRetryCepat = false;
+bool dataUpdate = false;
+int8_t res = 0;
 
 void setup() {
-      initSistem();     // Serial, I2C, Pin mode
+      initSistem();  // Serial, I2C, Pin mode
+      initDisp();
       initSensorMAX();  // Konfigurasi register MAX30105
 }
 
 void loop() {
-      switch (currentState) {
-            case ST_STANDBY: {
-                  // Tentukan cooldown: 0.2 detik jika gagal, 3 detik jika normal
+      switch (systemState) {
+            case SYS_IDLE: {
+                  // Jika habis error, jeda cuma 0.2 dtk. Jika sukses/normal, jeda 6 dtk.
                   unsigned long durasiTunggu = butuhRetryCepat ? 200 : 6000;
-
                   if (adaTangan()) {
-                        // Cek apakah sudah melewati masa tunggu (cooldown)
                         if (millis() - waktuMulai >= durasiTunggu) {
-                              bangunSesi();
+                              bangunSesi();   // Siapkan sensor/variabel
+                              bufferIdx = 0;  // Reset penampung data
                               butuhRetryCepat = false;
                               waktuMulai = millis();
-                              bufferIdx = 0;
-                              currentState = ST_SAMPLING;  // Mulai ambil data
+                              systemState = SYS_SAMPLING;
+                              screenState = SCR_SAMPLING;
                         }
                   } else {
-                        prosesStandby();  // LED kedip indikator standby
+                        prosesStandby();  // Animasi atau hemat daya
                   }
             } break;
 
-            case ST_SAMPLING: {
-                  // Keamanan: Jika jari lepas, batalkan dan balik ke standby
-                  if (!adaTangan()) {
+            case SYS_SAMPLING: {
+                  if (adaTangan()) {
+                        if (dataReady) prosesSampling();  // Ambil data dari sensor
+
+                        // Jika data sudah penuh (sesuai panjang buffer)
+                        if (bufferIdx >= PANJANG_BUFFER) {
+                              detachInterrupt(digitalPinToInterrupt(interruptPin));
+                              waktuMulai = millis();
+                              systemState = SYS_SENDING;
+                              screenState = SCR_UPLOADING;
+                        }
+                  } else {
+                        // Tangan lepas saat sampling -> Batal, balik ke IDLE
                         detachInterrupt(digitalPinToInterrupt(interruptPin));
                         waktuMulai = millis();
-                        currentState = ST_STANDBY;
+                        systemState = SYS_IDLE;
+                        screenState = SCR_READY;
                         break;
                   }
-
-                  // Ambil data jika interupsi sensor menyala (flag dari ISR)
-                  if (dataReady) prosesSampling();
-
-                  // Cek apakah data sudah terkumpul penuh sesuai target
-                  if (bufferIdx >= PANJANG_BUFFER) {
-                        detachInterrupt(digitalPinToInterrupt(interruptPin));
-                        currentState = ST_KIRIM_DATA;  // Lanjut kirim ke Server
-                  }
             } break;
 
-            case ST_KIRIM_DATA: {
-                  // Jalankan fungsi kirim (outputnya bool: true/false)
-                  if (prosesKirimData()) {
-                        // Sukses: (Nanti tambahkan logic pindah ke ST_DISPLAY_HASIL)
+            case SYS_SENDING: {
+                  res = prosesKirimData();  // Kirim ke SIM800C -> Python
 
-                        // bufferIdx = 0;
-                        waktuMulai = millis();
-                        currentState = ST_STANDBY;
-                  } else {
-                        // Gagal: Balik ke standby untuk coba lagi nanti
-                        currentState = ST_STANDBY;
+                  waktuMulai = millis();
+                  systemState = SYS_IDLE;  // Selesai kirim pasti balik ke IDLE
+
+                  switch (res) {
+                        case 1:  // SUKSES
+                              if (!butuhRetryCepat) {
+                                    dataUpdate = true;
+                                    screenState = SCR_FINISHED;
+                              }
+                              break;
+                        case 0:  // OFFLINE (Masalah Sinyal/Internet)
+                              butuhRetryCepat = true;
+                              screenState = SCR_NET_ERR;
+                              break;
+                        default:  // ERROR SERVER (Refused/Timeout/Unsteady)
+                              butuhRetryCepat = true;
+                              screenState = SCR_SRV_ERR;
+                              break;
                   }
             } break;
       }
+
+      updateTampilan();  // Refresh OLED berdasarkan screenState & res
 }

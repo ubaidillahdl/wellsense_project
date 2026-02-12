@@ -17,8 +17,14 @@ void prosesSampling();
 void bangunSesi();
 
 // --- Network.cpp: Komunikasi SIM800C ---
+bool cekInternet();
 bool hubungkanKePython();
-bool prosesKirimData();
+int8_t prosesKirimData();
 bool pecahDataFeedback(char *buf);
+
+// --- Display.cpp
+void initDisp();
+void tampilVitals();
+void updateTampilan();
 
 #endif

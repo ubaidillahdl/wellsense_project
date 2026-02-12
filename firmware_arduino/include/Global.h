@@ -5,11 +5,16 @@
 #include <MAX30105.h>
 #include <SoftwareSerial.h>
 
+#include "SSD1306Ascii.h"
+#include "SSD1306AsciiWire.h"
+
 // --- 1. KONFIGURASI JARINGAN & BUFFER ---
 #define PANJANG_BUFFER 150         // 150 data @50Hz = 3 detik rekaman
 #define SERVER_IP "192.168.0.105"  // IP Server Python (sesuaikan dengan WiFi/LAN)
 #define SERVER_PORT "5005"         // Port socket Python
 #define DEVICE_TOKEN "WS-01-PROTOTYPE"
+
+#define I2C_ADDRESS 0x3C
 
 // --- 2. DEFINISI STRUKTUR DATA (State Management) ---
 struct DesimasiState {
@@ -36,10 +41,19 @@ struct HasilVitals {
       int std;
 };
 
-enum State {
-      ST_STANDBY,
-      ST_SAMPLING,
-      ST_KIRIM_DATA
+enum SystemState {
+      SYS_IDLE,
+      SYS_SAMPLING,
+      SYS_SENDING
+};
+
+enum ScreenState {
+      SCR_READY,
+      SCR_SAMPLING,
+      SCR_UPLOADING,
+      SCR_FINISHED,
+      SCR_NET_ERR,
+      SCR_SRV_ERR
 };
 
 // --- 3. DEKLARASI EXTERN (Variabel Global antar File) ---
@@ -47,17 +61,22 @@ extern DesimasiState desimRed, desimIR;
 extern LpfState filterRed, filterIR;
 extern DataSensor wadah;
 extern HasilVitals dataVitals;
-extern State currentState;
+extern SystemState systemState;
+extern ScreenState screenState;
+extern ScreenState lastScreen;
 
 extern uint8_t bufferIdx;
 extern int32_t rawRed, filteredRed, rawIR, filteredIR;
 extern unsigned long waktuMulai, waktuMulaiSesi;
 extern bool butuhRetryCepat;
 extern bool dataReady;
+extern bool dataUpdate;
+extern int8_t res;
 
 // --- 4. OBJEK PERIPHERAL ---
 extern MAX30105 particleSensor;
 extern SoftwareSerial sim800;
+extern SSD1306AsciiWire oled;
 
 // --- 5. KONFIGURASI PIN ---
 const byte interruptPin = 3;  // Pin INT dari MAX30105
