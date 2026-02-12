@@ -14,7 +14,8 @@ DataSensor wadah;
 DesimasiState desimRed, desimIR;
 LpfState filterRed, filterIR;
 HasilVitals dataVitals;
-State currentState = ST_PERTAMA;
+SystemState systemState = SYS_IDLE;
+ScreenState screenState = SCR_STANDBY;
 
 bool dataReady = false;
 uint8_t bufferIdx = 0;
@@ -30,64 +31,52 @@ void setup() {
 }
 
 void loop() {
-      switch (currentState) {
-            case ST_PERTAMA: {
-                  delay(50);
-                  tampilVitals();
-                  waktuMulai = millis();
-                  currentState = ST_STANDBY;
-            } break;
-
-            case ST_STANDBY: {
+      switch (systemState) {
+            case SYS_IDLE: {
                   unsigned long durasiTunggu = butuhRetryCepat ? 200 : 6000;
-
-                  if (!adaTangan()) {
+                  if (adaTangan()) {
+                        if (millis() - waktuMulai >= durasiTunggu) {
+                              bangunSesi();
+                              bufferIdx = 0;
+                              butuhRetryCepat = false;
+                              waktuMulai = millis();
+                              systemState = SYS_SAMPLING;
+                              screenState = SCR_MEASURING;
+                        }
+                  } else {
                         prosesStandby();
-                        break;
-                  };
-
-                  if (millis() - waktuMulai >= durasiTunggu) {
-                        bangunSesi();  // Inisialisasi sensor
-                        bufferIdx = 0;
-                        butuhRetryCepat = false;
-                        layarSudahBersih = false;
-                        waktuMulai = millis();
-                        currentState = ST_SAMPLING;
                   }
             } break;
 
-            case ST_SAMPLING: {
-                  if (!adaTangan()) {
+            case SYS_SAMPLING: {
+                  if (adaTangan()) {
+                        if (dataReady) prosesSampling();
+                        if (bufferIdx >= PANJANG_BUFFER) {
+                              detachInterrupt(digitalPinToInterrupt(interruptPin));
+                              waktuMulai = millis();
+                              systemState = SYS_SENDING;
+                              screenState = SCR_SENDING;
+                        }
+                  } else {
                         detachInterrupt(digitalPinToInterrupt(interruptPin));
                         waktuMulai = millis();
-                        currentState = ST_STANDBY;
+                        systemState = SYS_IDLE;
+                        screenState = SCR_STANDBY;
                         break;
-                  }
-
-                  if (dataReady) prosesSampling();
-                  if (bufferIdx >= PANJANG_BUFFER) {
-                        detachInterrupt(digitalPinToInterrupt(interruptPin));
-                        waktuMulai = millis();
-                        currentState = ST_KIRIM_DATA;
                   }
             } break;
 
-            case ST_KIRIM_DATA: {
+            case SYS_SENDING: {
                   if (prosesKirimData()) {
                         waktuMulai = millis();
-                        currentState = ST_DISPLAY;
+                        systemState = SYS_IDLE;
+                        screenState = SCR_RESULT;
                         break;
                   }
                   waktuMulai = millis();
-                  currentState = ST_STANDBY;
-            } break;
-
-            case ST_DISPLAY: {
-                  if (!butuhRetryCepat) {
-                        tampilVitals();
-                  }
-                  waktuMulai = millis();
-                  currentState = ST_STANDBY;
+                  butuhRetryCepat = true;
+                  systemState = SYS_IDLE;
+                  screenState = SCR_STANDBY;
             } break;
       }
 }
