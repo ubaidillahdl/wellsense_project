@@ -48,10 +48,12 @@ enum SystemState {
 };
 
 enum ScreenState {
-      SCR_STANDBY,
-      SCR_MEASURING,
-      SCR_SENDING,
-      SCR_RESULT
+      SCR_READY,
+      SCR_SAMPLING,
+      SCR_UPLOADING,
+      SCR_FINISHED,
+      SCR_NET_ERR,
+      SCR_SRV_ERR
 };
 
 // --- 3. DEKLARASI EXTERN (Variabel Global antar File) ---
@@ -61,12 +63,15 @@ extern DataSensor wadah;
 extern HasilVitals dataVitals;
 extern SystemState systemState;
 extern ScreenState screenState;
+extern ScreenState lastScreen;
 
 extern uint8_t bufferIdx;
 extern int32_t rawRed, filteredRed, rawIR, filteredIR;
 extern unsigned long waktuMulai, waktuMulaiSesi;
 extern bool butuhRetryCepat;
 extern bool dataReady;
+extern bool dataUpdate;
+extern int8_t res;
 
 // --- 4. OBJEK PERIPHERAL ---
 extern MAX30105 particleSensor;

@@ -1,69 +1,102 @@
 #include "Functions.h"
 #include "Global.h"
 
-bool prosesKirimData() {
-      bool sukses = false;  // Default gagal
+int8_t prosesKirimData() {
+      // 0. VALIDASI KONEKSI
+      if (!cekInternet()) return 0;         // Gagal Internet (OFFLINE)
+      if (!hubungkanKePython()) return -1;  // Gagal Port/Server (REFUSED)
 
-      if (hubungkanKePython()) {
-            // 1. Hitung total karakter untuk AT+CIPSEND
-            long totalChar = strlen(DEVICE_TOKEN) + 1;
-            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-                  char buf[20];
-                  totalChar +=
-                      sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
-            }
-            totalChar += 1;  // Newline (\n)
+      // 1. HITUNG PANJANG DATA (Wajib untuk AT+CIPSEND)
+      long totalChar = strlen(DEVICE_TOKEN) + 1;  // Token + Pemisah "|"
+      for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
+            char buf[20];
+            // Simulasi format "IR:RED," untuk menghitung jumlah karakter
+            totalChar +=
+                sprintf(buf, "%u:%u,", wadah.bufferIR[i], wadah.bufferRed[i]);
+      }
+      totalChar += 1;  // Karakter Newline (\n) di akhir
 
-            // 2. Beritahu SIM800 panjang data
-            sim800.print("AT+CIPSEND=");
-            sim800.println(totalChar);
-            delay(200);
+      // 2. REQUEST KIRIM KE SIM800
+      sim800.print("AT+CIPSEND=");
+      sim800.println(totalChar);
+      delay(200);  // Tunggu respon ">" dari SIM800
 
-            // 3. Kirim Token & Data Buffer
-            sim800.print(DEVICE_TOKEN);
-            sim800.print(F("|"));
-            for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
-                  sim800.print(wadah.bufferIR[i]);
-                  sim800.print(F(":"));
-                  sim800.print(wadah.bufferRed[i]);
-                  sim800.print(F(","));
-            }
-            sim800.print(F("\n"));
-            Serial.println(F(">>> DATA Terkirim ke Server !"));
+      // 3. PROSES TRANSMISI DATA
+      sim800.print(DEVICE_TOKEN);
+      sim800.print(F("|"));
+      for (uint8_t i = 0; i < PANJANG_BUFFER; i++) {
+            sim800.print(wadah.bufferIR[i]);
+            sim800.print(F(":"));
+            sim800.print(wadah.bufferRed[i]);
+            sim800.print(F(","));
+      }
+      sim800.print(F("\n"));
+      Serial.println(F(">>> DATA Terkirim ke Server !"));
 
-            // 4. Tunggu Feedback Server (5 detik)
-            unsigned long waitReply = millis();
-            bool dataReceived = false;
+      // 4. MENUNGGU RESPON BALIK (TIMEOUT 5 DETIK)
+      unsigned long waitReply = millis();
+      bool dataReceived = false;
 
-            while (millis() - waitReply < 5000) {
-                  if (sim800.available()) {
-                        char c = sim800.read();
-                        if (c == '*') {  // Paket terdeteksi
-                              char feedbackBuf[64];
-                              // Bersihkan buffer dari sisa data lama
-                              memset(feedbackBuf, 0, sizeof(feedbackBuf));
+      while (millis() - waitReply < 5000) {
+            if (sim800.available()) {
+                  char c = sim800.read();
+                  if (c == '*') {  // Header paket terdeteksi
+                        char feedbackBuf[64];
+                        memset(feedbackBuf, 0, sizeof(feedbackBuf));  // Bersihkan sisa data
 
-                              // Baca data dari SIM800
-                              uint8_t len = sim800.readBytesUntil('#', feedbackBuf, sizeof(feedbackBuf) - 1);
-                              feedbackBuf[len] = '\0';  // Kunci akhir string
+                        // Baca sampai terminator '#' (Format: *DATA#)
+                        uint8_t len = sim800.readBytesUntil('#', feedbackBuf, sizeof(feedbackBuf) - 1);
+                        feedbackBuf[len] = '\0';
 
-                              if (!pecahDataFeedback(feedbackBuf)) butuhRetryCepat = true;
-
-                              dataReceived = true;
-                              sukses = true;  // Sukses total
-                              break;
+                        if (pecahDataFeedback(feedbackBuf)) {
+                              return 1;  // SUKSES: Data diolah & tampil
+                        } else {
+                              butuhRetryCepat = true;
+                              return -3;  // UNSTEADY: Data rusak/gagal analisis
                         }
+                        dataReceived = true;
+                        break;
                   }
             }
-
-            if (!dataReceived) {
-                  Serial.println(F(">>> GAGAL mendapat respon Server !"));
-                  butuhRetryCepat = true;
-            }
-            delay(500);
-            sim800.println(F("AT+CIPCLOSE"));  // Tutup koneksi TCP
       }
-      return sukses;
+
+      // 5. PENANGANAN JIKA TIDAK ADA BALASAN
+      if (!dataReceived) {
+            Serial.println(F(">>> GAGAL mendapat respon Server !"));
+            butuhRetryCepat = true;
+      }
+
+      delay(500);
+      sim800.println(F("AT+CIPCLOSE"));  // Tutup sesi TCP demi keamanan
+      return -2;                         // TIMEOUT
+}
+
+bool cekInternet() {
+      // Kuras sisa data di buffer serial SIM800
+      while (sim800.available()) sim800.read();
+
+      // Perintah cek internet dengan cara ping IP google
+      sim800.println(F("AT+PING=\"8.8.8.8\""));
+
+      // Tunggu respon sukses maksimal 3 detik
+      unsigned long timeout = millis();
+      while (millis() - timeout < 3000) {
+            if (sim800.available()) {
+                  char tempBuffer[50];
+                  memset(tempBuffer, 0, sizeof(tempBuffer));
+
+                  int len = sim800.readBytes(tempBuffer, sizeof(tempBuffer) - 1);
+                  tempBuffer[len] = '\0';
+
+                  // Cek indikasi koneksi berhasil
+                  if (strstr(tempBuffer, "OK")) {
+                        Serial.println(F(">>> SUKSES Terhubung ke Internet !"));
+                        return true;
+                  }
+            }
+      }
+      Serial.println(F(">>> GAGAL Terhubung ke Internet !"));
+      return false;
 }
 
 bool hubungkanKePython() {
