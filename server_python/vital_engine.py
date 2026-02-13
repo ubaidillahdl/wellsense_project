@@ -57,7 +57,7 @@ class VitalEngine:
         self.last_result = output
         self.graph_ready = True
 
-        self.feedback_str = f"*0.0;0.0;0.0;0.0;0.0;{std_val:.0f}#\n"
+        self.feedback_str = f"*0;0;0;0;0;{int(round(std_val))}#\n"
         self.new_data_available = True
 
         # --- 2. GATEKEEPER (Cek Sensor) ---
@@ -118,7 +118,7 @@ class VitalEngine:
                     s_spo2 = self.processor.spo2_filter.get_stable_value(spo2)
                     s_sbp = self.processor.sbp_filter.get_stable_value(sbp)
                     s_dbp = self.processor.dbp_filter.get_stable_value(dbp)
-                    s_hb = self.processor.hb_filter.get_stable_value(hb)
+                    s_hb = self.processor.hb_filter.get_stable_value(hb) * 10  # g/L
 
                     # --- INTEGRASI KE DATABASE MILIK ABANG ---
                     # Bungkus ke dictionary sesuai kebutuhan save_health_data
@@ -139,7 +139,7 @@ class VitalEngine:
                     self.db.save_health_data(device_info, vitals_dict, signals_dict)
 
                     # Siapkan feedback untuk Arduino via Listener
-                    self.feedback_str = f"*{s_hr:.4f};{s_spo2:.4f};{s_sbp:.4f};{s_dbp:.4f};{s_hb:.4f};{std_val:.0f}\n"
+                    self.feedback_str = f"*{int(round(s_hr))};{int(round(s_spo2))};{int(round(s_sbp))};{int(round(s_dbp))};{int(round(s_hb))};{int(round(std_val))}\n"
                     self.new_data_available = True
 
                     # Update output lengkap untuk Plotter
@@ -206,5 +206,5 @@ class VitalEngine:
         print(f"│ SYSTOLIC PRESSURE   │  {v[2]:>8.4f} mmHg      │")
         print(f"│ DIASTOLIC PRESSURE  │  {v[3]:>8.4f} mmHg      │")
         print("├─────────────────────┼─────────────────────┤")
-        print(f"│ HEMOGLOBIN (Hb)     │  {v[4]:>8.4f} g/dL      │")
+        print(f"│ HEMOGLOBIN (Hb)     │  {v[4]:>8.4f} g/L       │")
         print("└─────────────────────┴─────────────────────┘")

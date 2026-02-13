@@ -15,66 +15,83 @@ void initDisp() {
 }
 
 void tampilVitals() {
-      // 1. KONVERSI & PEMBATASAN NILAI: Ambil angka bulat & batasi 0-99 untuk sisi kanan
-      uint8_t sbp = (uint8_t)ceil(dataVitals.sbp);
-      uint8_t dbp = (uint8_t)ceil(dataVitals.dbp);
-      uint8_t hr = constrain((uint8_t)ceil(dataVitals.hr), 0, 99);
-      uint8_t spo2 = constrain((uint8_t)ceil(dataVitals.spo2), 0, 99);
-      uint8_t hb = constrain((uint8_t)ceil(dataVitals.hb), 0, 99);
+      // 1. AMBIL DATA (Pastikan tipe data sesuai struct: uint8_t & uint16_t)
+      uint8_t sbp = dataVitals.sbp;
+      uint8_t dbp = dataVitals.dbp;
+      uint8_t hr = dataVitals.hr;
+      uint8_t spo2 = dataVitals.spo2;
+      uint16_t hb = dataVitals.hb;  // hb dalam g/L (misal 145)
 
       // --- SISI KIRI (Tensi: SBP & DBP) ---
-      // Geser posisi label jika angka tensi mencapai ratusan (3 digit)
-      uint8_t anchorX = (sbp >= 100 || dbp >= 100) ? 38 : 26;
+      // Tentukan posisi label (anchor) berdasarkan jumlah digit tertinggi
+      uint8_t defaultX = (sbp >= 10 || dbp >= 10) ? 26 : 14;
+      uint8_t anchorL = (sbp >= 100 || dbp >= 100) ? 38 : defaultX;
 
-      // Hapus area kiri (baris 3 sampai 7)
       for (uint8_t r = 3; r <= 7; r++) oled.clearField(0, r, 65);
-
-      // Cetak angka SBP & DBP (Font Besar)
       oled.setFont(lcdnums12x16);
+
+      // Print SBP: Tambah spasi padding agar rata kanan terhadap label
       oled.setCursor(0, 3);
-      if (sbp < 100 && anchorX == 38) oled.print(F(" "));  // Alignment spasi
+      if (anchorL == 38 && sbp < 10)
+            oled.print(F("  "));  // Satuan di mode ratusan
+      else if (anchorL == 38 && sbp < 100)
+            oled.print(F(" "));  // Puluhan di mode ratusan
+      else if (anchorL == 26 && sbp < 10)
+            oled.print(F(" "));  // Satuan di mode puluhan
       oled.print(sbp);
+
+      // Print DBP: Logika padding yang sama dengan SBP
       oled.setCursor(0, 6);
-      if (dbp < 100 && anchorX == 38) oled.print(F(" "));
+      if (anchorL == 38 && dbp < 10)
+            oled.print(F("  "));
+      else if (anchorL == 38 && dbp < 100)
+            oled.print(F(" "));
+      else if (anchorL == 26 && dbp < 10)
+            oled.print(F(" "));
       oled.print(dbp);
 
-      // Cetak Label Tensi (Font Kecil)
+      // Label Sisi Kiri (SBP/DBP)
       oled.setFont(font5x7);
-      oled.setCursor(anchorX, 3);
+      oled.setCursor(anchorL, 3);
       oled.print(F("SBP"));
-      oled.setCursor(anchorX, 4);
+      oled.setCursor(anchorL, 4);
       oled.print(F("mmHg"));
-      oled.setCursor(anchorX, 6);
+      oled.setCursor(anchorL, 6);
       oled.print(F("DBP"));
-      oled.setCursor(anchorX, 7);
+      oled.setCursor(anchorL, 7);
       oled.print(F("mmHg"));
 
       // --- SISI KANAN (HR, SPO2, HB) ---
+      // Geser anchor ke kiri (67) jika ada data yang butuh 3 digit
+      uint8_t anchorR = (hr >= 100 || spo2 >= 100 || hb >= 100) ? 67 : 79;
+
       oled.setFont(lcdnums12x16);
 
-      // 1. Update HR: Hapus area angka saja (24px) lalu cetak
-      oled.clearField(79, 0, 24);
-      oled.clearField(79, 1, 24);
-      oled.setCursor(79, 0);
-      if (hr < 10) oled.print(F(" "));
+      // Print HR: Clear area angka (67-104) & cetak rata kanan
+      oled.clearField(67, 0, 38);
+      oled.clearField(67, 1, 38);
+      oled.setCursor(anchorR, 0);
+      if (hr < 100 && anchorR == 67) oled.print(F(" "));  // Gap untuk ratusan
+      if (hr < 10) oled.print(F(" "));                    // Gap untuk puluhan
       oled.print(hr);
 
-      // 2. Update SPO2
-      oled.clearField(79, 3, 24);
-      oled.clearField(79, 4, 24);
-      oled.setCursor(79, 3);
+      // Print SPO2
+      oled.clearField(67, 3, 38);
+      oled.clearField(67, 4, 38);
+      oled.setCursor(anchorR, 3);
+      if (spo2 < 100 && anchorR == 67) oled.print(F(" "));
       if (spo2 < 10) oled.print(F(" "));
       oled.print(spo2);
 
-      // 3. Update HB
-      oled.clearField(79, 6, 24);
-      oled.clearField(79, 7, 24);
-      oled.setCursor(79, 6);
+      // Print HB (g/L)
+      oled.clearField(67, 6, 38);
+      oled.clearField(67, 7, 38);
+      oled.setCursor(anchorR, 6);
+      if (hb < 100 && anchorR == 67) oled.print(F(" "));
       if (hb < 10) oled.print(F(" "));
       oled.print(hb);
 
-      // --- LABEL KANAN (Static Labels) ---
-      // Ditulis ulang tanpa clear agar tetap muncul meski state berubah
+      // Label Sisi Kanan (Tetap di posisi 105)
       oled.setFont(font5x7);
       oled.setCursor(105, 0);
       oled.print(F("HR"));
@@ -87,7 +104,7 @@ void tampilVitals() {
       oled.setCursor(105, 6);
       oled.print(F("HB"));
       oled.setCursor(105, 7);
-      oled.print(F("g/dL"));
+      oled.print(F("g/L"));
 }
 
 unsigned long lastStateTime = 0;

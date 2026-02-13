@@ -33,12 +33,12 @@ struct DataSensor {
 };
 
 struct HasilVitals {
-      float hr;
-      float spo2;
-      float sbp;
-      float dbp;
-      float hb;
-      int std;
+      uint8_t hr;
+      uint8_t spo2;
+      uint8_t sbp;
+      uint8_t dbp;
+      uint8_t hb;
+      uint16_t std;
 };
 
 enum SystemState {

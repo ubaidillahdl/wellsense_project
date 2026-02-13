@@ -135,19 +135,19 @@ bool pecahDataFeedback(char *buf) {
       bool hasilAnalisa = true;
 
       char *ptr = strtok(buf, ";");
-      if (ptr) dataVitals.hr = atof(ptr);
+      if (ptr) dataVitals.hr = atoi(ptr);
 
       ptr = strtok(NULL, ";");
-      if (ptr) dataVitals.spo2 = atof(ptr);
+      if (ptr) dataVitals.spo2 = atoi(ptr);
 
       ptr = strtok(NULL, ";");
-      if (ptr) dataVitals.sbp = atof(ptr);
+      if (ptr) dataVitals.sbp = atoi(ptr);
 
       ptr = strtok(NULL, ";");
-      if (ptr) dataVitals.dbp = atof(ptr);
+      if (ptr) dataVitals.dbp = atoi(ptr);
 
       ptr = strtok(NULL, ";");
-      if (ptr) dataVitals.hb = atof(ptr);
+      if (ptr) dataVitals.hb = atoi(ptr);
 
       ptr = strtok(NULL, ";");
       if (ptr) dataVitals.std = atoi(ptr);
@@ -156,23 +156,23 @@ bool pecahDataFeedback(char *buf) {
             // Print hasil ke Serial untuk verifikasi
             Serial.println(F("\n======= HASIL ANALISA ======="));
             Serial.print(F("HR\t: "));
-            Serial.print(dataVitals.hr, 2);
-            Serial.println(F("\t\tbpm"));
+            Serial.print(dataVitals.hr);
+            Serial.println(F("\tbpm"));
             Serial.print(F("SPO2\t: "));
-            Serial.print(dataVitals.spo2, 2);
-            Serial.println(F("\t\t%"));
+            Serial.print(dataVitals.spo2);
+            Serial.println(F("\t%"));
             Serial.print(F("SBP\t: "));
-            Serial.print(dataVitals.sbp, 4);
+            Serial.print(dataVitals.sbp);
             Serial.println(F("\tmmHg"));
             Serial.print(F("DBP\t: "));
-            Serial.print(dataVitals.dbp, 4);
+            Serial.print(dataVitals.dbp);
             Serial.println(F("\tmmHg"));
             Serial.print(F("HB\t: "));
-            Serial.print(dataVitals.hb, 2);
-            Serial.println(F("\t\tg/dL"));
+            Serial.print(dataVitals.hb);
+            Serial.println(F("\tg/L"));
             Serial.print(F("STD\t: "));
             Serial.print(dataVitals.std);
-            Serial.println(F("\t\tcounts"));
+            Serial.println(F("\tcounts"));
             Serial.println(F("============================="));
       } else {
             Serial.print(F(">>> STD "));
