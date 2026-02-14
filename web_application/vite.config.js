@@ -18,7 +18,7 @@ export default defineConfig({
         port: 5173, // Port standar Vite
         strictPort: true,
         hmr: {
-            host: "192.168.100.25",
+            host: "192.168.0.105",
         },
         cors: true, // Izinkan akses lintas perangkat
     },
