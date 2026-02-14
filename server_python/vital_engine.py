@@ -1,7 +1,6 @@
 import numpy as np
 from processor import Processor
 from database import WellSenseDB
-import json
 
 
 class VitalEngine:
@@ -132,11 +131,36 @@ class VitalEngine:
 
                     # Ubah array sinyal ke string agar muat di LONGTEXT
                     signals_dict = {
-                        "ir": json.dumps(ppg_ir.tolist()),
-                        "red": json.dumps(ppg_red.tolist()),
+                        # Kita bungkus dulu dengan np.array() baru panggil .tolist()
+                        "raw_ir": np.array(ir_data).tolist(),
+                        "raw_red": np.array(red_data).tolist(),
+                        "filtered_ir": ppg_ir.tolist(),
+                        "filtered_red": ppg_red.tolist(),
                     }
 
-                    self.db.save_health_data(device_info, vitals_dict, signals_dict)
+                    # Features untuk pemetaan titik di Dashboard Web
+                    features_dict = {
+                        "z_points": [
+                            int(best_cycle["z1"]),
+                            int(best_cycle["z2"]),
+                            int(best_cycle["z3"]),
+                        ],
+                        "w_metadata": {k: float(v) for k, v in w_out.items()},
+                        "quality_metrics": {
+                            "score": float(best_cycle.get("score", 0)),
+                            "skew": float(best_cycle.get("skew", 0)),
+                            "kurt": float(best_cycle.get("kurt", 0)),
+                            "ratio": float(best_cycle.get("ratio", 0)),
+                        },
+                    }
+
+                    self.db.save_health_data(
+                        device_info,
+                        device_token,
+                        vitals_dict,
+                        signals_dict,
+                        features_dict,
+                    )
 
                     # Siapkan feedback untuk Arduino via Listener
                     self.feedback_str = f"*{int(round(s_hr))};{int(round(s_spo2))};{int(round(s_sbp))};{int(round(s_dbp))};{int(round(s_hb))};{int(round(std_val))}\n"

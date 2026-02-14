@@ -19,8 +19,12 @@ return new class extends Migration
             $table->foreignId('pengguna_id')->constrained('pengguna')->onDelete('cascade');
             $table->foreignId('device_id')->constrained('devices')->onDelete('cascade');
 
+            $table->longText('raw_ir')->nullable();
+            $table->longText('raw_red')->nullable();
             $table->longText('filtered_ir')->nullable();
             $table->longText('filtered_red')->nullable();
+
+            $table->json('features')->nullable();
 
             $table->decimal('hr', 8, 4)->nullable();
             $table->decimal('spo2', 8, 4)->nullable();
