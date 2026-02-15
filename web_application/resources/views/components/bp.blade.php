@@ -15,28 +15,29 @@
                     <div class=" flex-1 mt-[0.8vh] sm:rounded-[2.5vh] rounded-[3vh] flex gap-[2vh]">
                         <div class="bg-gray-600 flex-2 sm:rounded-[2.5vh] rounded-[3vh] flex items-center"
                             x-data="{
-                                sys: 120,
-                                dia: 80,
-                                simulateBP() {
-                                    setInterval(() => {
-                                        // Simulasi Sistolik (110 - 130)
-                                        this.sys = Math.floor(Math.random() * (130 - 110 + 1) + 110);
-                                        // Simulasi Diastolik (70 - 90)
-                                        this.dia = Math.floor(Math.random() * (90 - 70 + 1) + 70);
-                                    }, 4000); // Berubah setiap 4 detik agar tidak terlalu cepat
-                                }
-                            }" x-init="simulateBP()">
+                                sbp: {{ round($latestData->sbp) }},
+                                dbp: {{ round($latestData->dbp) }},
+                            }"
+                            @vitals-updated.window="
+                            if ($event.detail.vitals.hr) {
+                                sbp = Math.round($event.detail.vitals.sbp);
+                            }
+                            if ($event.detail.vitals.spo2) {
+                                dbp = Math.round($event.detail.vitals.dbp);
+                            }
+                            ">
 
-                            <div class="flex-3 flex flex-col ps-[3vh] text-gray-400">
+                            <div class="flex-3
+                            flex flex-col ps-[3vh] text-gray-400">
                                 <span
                                     class=" w-[50%] text-[5.9vh] sm:text-[4.9vh] sm:leading-[4.9vh] leading-[5.9vh] 
                                     text-center text-white"
-                                    x-text="sys">120</span>
+                                    x-text="sbp"></span>
                                 <div class="flex justify-center">
 
                                     /<span
                                         class="ms-[1.5vh] text-[5.9vh] sm:text-[4.9vh] sm:leading-[4.9vh] leading-[5.9vh] text-end text-white"
-                                        x-text="dia">80</span>
+                                        x-text="dbp"></span>
                                     <span class=" flex items-end text-[1.9vh] sm:text-[1.5vh]">mmHg</span>
                                 </div>
                             </div>

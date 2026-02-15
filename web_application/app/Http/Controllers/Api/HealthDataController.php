@@ -13,12 +13,12 @@ use Illuminate\Http\Request;
 class HealthDataController extends Controller
 {
     /**
-     * Handle Path 2: Trigger Dashboard Real-time
-     * (Data sudah disimpan ke DB via Python Path 1)
+     * Path 2: Trigger Broadcast ke Dashboard
+     * Alur: Python Simpan ke DB -> Python Hit API Ini -> Laravel Broadcast ke Reverb
      */
     public function store(Request $request)
     {
-        // 1. Validasi Input: Pastikan Python mengirimkan token
+        // 1. Validasi Token Device
         $validator = Validator::make($request->all(), [
             'device_token' => 'required|string',
         ]);
@@ -31,7 +31,7 @@ class HealthDataController extends Controller
         }
 
         try {
-            // 2. Verifikasi Device: Cek apakah token terdaftar di database kita
+            // 2. Verifikasi kepemilikan device
             $device = Device::where('device_token', $request->device_token)->first();
 
             if (!$device) {
@@ -41,22 +41,14 @@ class HealthDataController extends Controller
                 ], 403);
             }
 
-            // 3. Logika Path 2 (Trigger Only):
-            // Kita tidak melakukan Save ke DB di sini (Path 1 sudah handle).
-            // Mendatang: Letakkan fungsi Broadcast/Websocket di sini.
+            // 3. Ambil data terbaru yang baru saja disimpan oleh Python (Path 1)
             $latestData = DataKesehatan::where('device_id', $device->id)->latest()->first();
 
             if ($latestData) {
-                // Ini perintah untuk membroadcast data ke WebSocket (Reverb)
-                event(new HealthDataReceived(($latestData)));
-            }
-
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Path 2 Berhasil: Sinyal pemicu dashboard diterima.',
-                'data' => [
+                // Susun payload agar rapi saat diterima Frontend/JavaScript
+                $payload = [
                     'nama_device' => $device->nama_device,
+                    'filtered_ir' => $latestData->filtered_ir,
                     'vitals' => [
                         'hr' => $latestData->hr,
                         'spo2' => $latestData->spo2,
@@ -64,10 +56,19 @@ class HealthDataController extends Controller
                         'dbp' => $latestData->dbp,
                         'hb' => $latestData->hb,
                     ]
-                ]
+                ];
+
+                // 4. Kirim data ke "udara" via WebSocket (Reverb)
+                event(new HealthDataReceived(($payload)));
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Path 2 Berhasil: Sinyal pemicu dashboard diterima.',
+                'data' => $payload
             ], 200);
         } catch (\Exception $e) {
-            // 4. Error Handling: Catat di storage/logs/laravel.log jika server bermasalah
+            // 5. Catat log jika ada error sistem (Cek storage/logs/laravel.log)
             Log::error("Error pada Path 2: " . $e->getMessage());
             return response()->json([
                 'status' => 'error',

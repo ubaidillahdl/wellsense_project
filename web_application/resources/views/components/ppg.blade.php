@@ -14,7 +14,7 @@
                 PPG
             </div>
             <div class="bg-gray-600 flex-1 mt-[0.8vh] sm:rounded-[2.5vh] rounded-[3vh] overflow-hidden">
-                <div x-data="ppgChart()" x-init="initChart()" class="w-full h-full">
+                <div x-data="ppgChart()" x-init="initChart({{ json_encode($latestData->filtered_ir) }})" class="w-full h-full">
                     <canvas id="ppgCanvas"></canvas>
                 </div>
             </div>
