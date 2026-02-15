@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Device;
 use App\Models\Pengguna;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -15,18 +14,27 @@ class InitialDataSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = Pengguna::create([
-            'nama' => 'Abang Developer',
-            'email' => 'admin@wellsense.com',
-            'kata_sandi' => Hash::make('password123')
+        // 1. Buat Pengguna Admin (Sudah punya alat)
+        $admin = Pengguna::create([
+            'nama' => 'Admin Wellsense',
+            'email' => 'admin@wellsense.io',
+            'kata_sandi' => Hash::make('wellsense')
         ]);
 
+        // Hubungkan alat ke Admin
         Device::create([
-            'pengguna_id' => $user->id,
-            'device_token' => 'WS-01-PROTOTYPE',
-            'nama_device' => 'Sensor Prototipe 1'
+            'pengguna_id' => $admin->id,
+            'device_token' => 'WS-866501012348821',
+            'nama_device' => 'Wellsense Care'
         ]);
 
-        $this->command->info('Data Pengguna dan Device berhasil dibuat!');
+        // 2. Buat Pengguna Biasa (Tanpa alat / Masih kosong)
+        Pengguna::create([
+            'nama' => 'User Testing',
+            'email' => 'user@wellsense.io',
+            'kata_sandi' => Hash::make('wellsense')
+        ]);
+
+        $this->command->info('Data Pengguna (Admin & User Kosong) serta Device berhasil dibuat!');
     }
 }

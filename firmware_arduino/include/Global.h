@@ -12,7 +12,7 @@
 #define PANJANG_BUFFER 150         // 150 data @50Hz = 3 detik rekaman
 #define SERVER_IP "192.168.0.105"  // IP Server Python (sesuaikan dengan WiFi/LAN)
 #define SERVER_PORT "5005"         // Port socket Python
-#define DEVICE_TOKEN "WS-01-PROTOTYPE"
+#define DEVICE_TOKEN "WS-866501012348821"
 
 #define I2C_ADDRESS 0x3C
 
