@@ -17,22 +17,20 @@
             <div class=" flex-1 mt-[0.8vh] sm:rounded-[2.5vh] rounded-[3vh] flex gap-[2vh]">
                 <div class="bg-gray-600 flex-2 sm:rounded-[2.5vh] rounded-[3vh] flex items-center"
                     x-data="{
-                        hb: 17.7,
-                        simulate() {
-                            setInterval(() => {
-                                // Rentang normal 12.0 - 18.0
-                                let val = Math.random() * (18.0 - 12.0) + 12.0;
-                                this.hb = val.toFixed(1);
-                            }, 3000);
-                        }
-                    }" x-init="simulate()">
+                        hb: {{ round($latestData->hb) }},
+                    }"
+                    @vitals-updated.window="
+                    if ($event.detail.vitals.hr) {
+                        hb = Math.round($event.detail.vitals.hb);
+                    }
+                ">
                     <div class="flex-1 flex justify-between items-baseline">
                         <span
                             class="flex-[2.5] text-[8.5vh] sm:text-[7.1vh] sm:leading-[7.1vh] leading-[8.5vh] text-end"
-                            x-text="hb.toString().replace('.', ',')">17,7</span>
+                            x-text="hb.toString().replace('.', ',')"></span>
                         <span
                             class="flex-1
-                            text-[1.9vh] sm:text-[1.5vh] leading-[1.9vh] sm:leading-[1.5vh] text-gray-400">g/dL</span>
+                            text-[1.9vh] sm:text-[1.5vh] leading-[1.9vh] sm:leading-[1.5vh] text-gray-400">g/L</span>
                     </div>
                 </div>
 

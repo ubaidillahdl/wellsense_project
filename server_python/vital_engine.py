@@ -29,16 +29,14 @@ class VitalEngine:
 
         # --- 1. PRE-PROCESSING (Sinyal Mentah) ---
         ac_ir, v_dc_ir = self.processor.dc_remover(ir_data)
-        ppg_ir = self.processor.apply_spline(
-            self.processor.butter_filter(self.processor.moving_average(ac_ir)),
-            target_hz=self.fs,
-        )
+        filtered_ir = self.processor.butter_filter(self.processor.moving_average(ac_ir))
+        ppg_ir = self.processor.apply_spline(filtered_ir, target_hz=self.fs)
 
         ac_red, v_dc_red = self.processor.dc_remover(red_data)
-        ppg_red = self.processor.apply_spline(
-            self.processor.butter_filter(self.processor.moving_average(ac_red)),
-            target_hz=self.fs,
+        filtered_red = self.processor.butter_filter(
+            self.processor.moving_average(ac_red)
         )
+        ppg_red = self.processor.apply_spline(filtered_red, target_hz=self.fs)
 
         t_ppg = np.linspace(0, len(ppg_ir) / self.fs, len(ppg_ir))
         std_val = np.std(ir_data)
@@ -134,8 +132,8 @@ class VitalEngine:
                         # Kita bungkus dulu dengan np.array() baru panggil .tolist()
                         "raw_ir": np.array(ir_data).tolist(),
                         "raw_red": np.array(red_data).tolist(),
-                        "filtered_ir": ppg_ir.tolist(),
-                        "filtered_red": ppg_red.tolist(),
+                        "filtered_ir": filtered_ir.tolist(),
+                        "filtered_red": filtered_red.tolist(),
                     }
 
                     # Features untuk pemetaan titik di Dashboard Web

@@ -30,7 +30,7 @@ class DataKesehatan extends Model
         'raw_red'         => 'array',
         'filtered_ir'     => 'array',
         'filtered_red'    => 'array',
-        'features' => 'array', // Sangat penting untuk z_points & quality_metrics
+        'features' => 'array',
         'hr'              => 'float',
         'spo2'            => 'float',
         'sbp'             => 'float',

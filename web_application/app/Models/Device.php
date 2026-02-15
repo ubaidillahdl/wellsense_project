@@ -21,7 +21,6 @@ class Device extends Model
     }
 
     // Relasi: Device ini sudah menghasilkan data apa saja?
-    // Gunanya: Supaya Abang bisa panggil $device->dataKesehatan
     public function dataKesehatan()
     {
         return $this->hasMany(DataKesehatan::class, 'device_id');
