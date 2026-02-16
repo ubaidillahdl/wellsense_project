@@ -8,22 +8,8 @@ class DataKesehatan extends Model
 {
     protected $table = 'data_kesehatan';
 
-    protected $fillable = [
-        'pengguna_id',
-        'raw_ir',
-        'raw_red',
-        'filtered_ir',
-        'filtered_red',
-        'features',
-        'hr',
-        'spo2',
-        'sbp',
-        'dbp',
-        'hb'
-    ];
-
     /**
-     * Casting otomatis: Mengubah JSON di DB menjadi Array/Objek di PHP
+     * Konversi Otomatis: JSON DB <-> Array PHP
      */
     protected $casts = [
         'raw_ir'          => 'array',
@@ -38,13 +24,17 @@ class DataKesehatan extends Model
         'hb'              => 'float',
     ];
 
-    // Relasi balik: Data ini milik siapa?
+    /**
+     * Relasi: Data ini milik siapa?
+     */
     public function pengguna()
     {
         return $this->belongsTo(Pengguna::class, 'pengguna_id');
     }
 
-    // Relasi ke device
+    /**
+     * Relasi: Data ini dikirim dari alat mana?
+     */
     public function device()
     {
         return $this->belongsTo(Device::class, 'device_id');

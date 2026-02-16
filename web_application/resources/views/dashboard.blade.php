@@ -1,4 +1,4 @@
-<x-layout>
+<x-layout title="Wellsense ● Dashboard ">
     <div class="h-full flex flex-col sm:text-[2vh] text-white">
 
         <x-navbar></x-navbar>
