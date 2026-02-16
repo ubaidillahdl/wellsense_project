@@ -25,13 +25,13 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         // Validasi format input
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $request->validate([
+            'email' => ['required', 'email', 'exists:pengguna,email'],
             'password' => ['required'],
         ]);
 
         // Cek kecocokan data ke Database (Email & Password otomatis di-hash)
-        if (Auth::attempt($credentials)) {
+        if (Auth::attempt($request->only('email', 'password'))) {
             // Login Berhasil: Buat ID session baru biar aman dari hacker
             $request->session()->regenerate();
 
@@ -39,10 +39,11 @@ class AuthController extends Controller
             return redirect()->intended('/');
         }
 
-        // Login Gagal: Balik ke form login dengan pesan error
-        return back()->withErrors([
-            'email' => 'Email atau password salah',
-        ])->onlyInput('email'); // Tetap tampilkan email yang tadi diketik (biar gak ngetik ulang)
+        // Jika password salah (tapi email benar), kita lempar error manual 
+        // agar sistem 'otomatis' Laravel tetap jalan melempar balik ke form
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'email' => [trans('auth.failed')],
+        ]);
     }
 
 
@@ -78,9 +79,9 @@ class AuthController extends Controller
     {
         // Validasi: email harus unik di tabel 'pengguna'
         $request->validate([
-            'nama' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:pengguna'],
-            'password' => ['required', 'min:6', 'confirmed'], // 'confirmed' butuh input 'password_confirmation'
+            'nama' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'string', 'email', 'max:100', 'unique:pengguna'],
+            'password' => ['required', 'min:8', 'confirmed'], // 'confirmed' butuh input 'password_confirmation'
         ]);
 
         // Masukkan data ke Database via Model Pengguna
@@ -94,6 +95,6 @@ class AuthController extends Controller
         Auth::login($user);
 
         // Lempar ke dashboard dengan pesan sukses sementara (Flash Session)
-        return redirect('/')->with('success', 'Pendaftaran berhasil!');
+        return redirect('/');
     }
 }
