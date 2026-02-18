@@ -12,27 +12,33 @@ document.addEventListener("alpine:init", () => {
     });
 
     // --- LISTENER DATA DARI SERVER (SIM800C -> LARAVEL -> ECHO) ---
-    window.Echo.channel("health-updates").listen("HealthDataReceived", (e) => {
-        const res = e.data ? e.data : e;
+    const userId = document
+        .querySelector('meta[name="user-id"]')
+        .content.trim();
+    window.Echo.channel(`health-updates.${userId}`).listen(
+        "HealthDataReceived",
+        (e) => {
+            const res = e.data ? e.data : e;
 
-        if (res.is_update_insight) {
-            // Sebar event khusus untuk update teks saran AI
-            window.dispatchEvent(
-                new CustomEvent("ai-insight-update", {
-                    detail: res.ai_insight,
-                }),
-            );
-            console.log("Insight AI: ", res);
-        } else {
-            // Sebar event untuk data vital & grafik PPG
-            window.dispatchEvent(
-                new CustomEvent("vitals-updated", {
-                    detail: res,
-                }),
-            );
-            console.log("Data Vital: ", res);
-        }
-    });
+            if (res.is_update_insight) {
+                // Sebar event khusus untuk update teks saran AI
+                window.dispatchEvent(
+                    new CustomEvent("ai-insight-update", {
+                        detail: res.ai_insight,
+                    }),
+                );
+                console.log("Insight AI: ", res);
+            } else {
+                // Sebar event untuk data vital & grafik PPG
+                window.dispatchEvent(
+                    new CustomEvent("vitals-updated", {
+                        detail: res,
+                    }),
+                );
+                console.log("Data Vital: ", res);
+            }
+        },
+    );
 
     // --- STORE: INSIGHT AI ---
     Alpine.store("insight", {

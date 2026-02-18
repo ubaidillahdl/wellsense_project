@@ -33,7 +33,7 @@ class HealthDataReceived implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('health-updates'),
+            new Channel('health-updates.' . $this->data['pengguna_id']),
         ];
     }
 }
