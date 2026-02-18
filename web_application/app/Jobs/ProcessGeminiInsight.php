@@ -64,6 +64,7 @@ class ProcessGeminiInsight implements ShouldQueue
 
                     // 4. Kirim sinyal ke Dashboard untuk update kolom Insight AI secara real-time
                     event(new HealthDataReceived([
+                        'pengguna_id'       => $this->latestData->pengguna_id,
                         'is_update_insight' => true, // Flag khusus untuk membedakan dengan broadcast data vital biasa
                         'ai_insight' => $insight
                     ]));
