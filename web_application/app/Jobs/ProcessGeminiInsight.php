@@ -32,14 +32,11 @@ class ProcessGeminiInsight implements ShouldQueue
         // 1. Konfigurasi API Gemini
         $apiKey = env('GEMINI_API_KEY');
 
-        // Prompt yang spesifik agar respon Gemini singkat dan padat
-        // $prompt = "Analisis: BP {$this->latestData->sbp}/{$this->latestData->dbp}, HR {$this->latestData->hr}, SpO2 {$this->latestData->spo2}. 1 saran medis < 15 kata.";
-
-        // Prompt baru yang memaksa Gemini menyebutkan parameter bermasalah
-        $prompt = "Analisis data vital ini: BP {$this->latestData->sbp}/{$this->latestData->dbp}, " .
+        $prompt = "Analisis data kesehatan ini: BP {$this->latestData->sbp}/{$this->latestData->dbp}, " .
             "HR {$this->latestData->hr}, SpO2 {$this->latestData->spo2}, Hb {$this->latestData->hb}. " .
-            "Tugas: Sebutkan parameter apa saja yang tidak normal, lalu berikan 1 saran medis singkat. " .
-            "Gunakan Bahasa Indonesia. Total jawaban maksimal 20 kata.";
+            "Tugas: Berikan analisis singkat dan satu saran medis dalam maksimal 30 kata. " .
+            "Gunakan gaya bahasa percakapan yang natural dan mengalir. " .
+            "WAJIB dalam bentuk satu paragraf utuh tanpa baris baru, tanpa daftar list, dan tanpa simbol bintang (markdown).";
 
 
         try {
