@@ -55,6 +55,7 @@ class HealthDataController extends Controller
                 // Susun payload untuk kebutuhan dashboard (WebSocket)
                 $payload = [
                     'filtered_ir' => $latestData->filtered_ir,
+                    'pengguna_id' => $latestData->pengguna_id,
                     'vitals' => [
                         'hr' => $latestData->hr,
                         'spo2' => $latestData->spo2,
