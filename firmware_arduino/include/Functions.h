@@ -15,6 +15,7 @@ void initSensorMAX();
 void prosesStandby();
 void prosesSampling();
 void bangunSesi();
+void normalisasiBuffer();
 
 // --- Network.cpp: Komunikasi SIM800C ---
 bool cekInternet();

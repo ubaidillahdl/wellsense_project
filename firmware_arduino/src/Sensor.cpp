@@ -135,3 +135,28 @@ bool updateDesimasi(DesimasiState &d, int32_t inputVal, int16_t &outputVal) {
       }
       return false;
 }
+
+void normalisasiBuffer() {
+      long totalRed = 0;
+      long totalIR = 0;
+
+      // 1. Hitung Rata-rata (DC Offset)
+      for (int i = 0; i < PANJANG_BUFFER; i++) {
+            totalRed += wadah.bufferRed[i];
+            totalIR += wadah.bufferIR[i];
+      }
+
+      int32_t avgRed = totalRed / PANJANG_BUFFER;
+      int32_t avgIR = totalIR / PANJANG_BUFFER;
+
+      // 2. Terapkan Normalisasi (AC + Offset 500)
+      for (int i = 0; i < PANJANG_BUFFER; i++) {
+            // Kurangi dengan rata-rata agar nilai berpusat di 0, lalu geser ke 500
+            wadah.bufferRed[i] = (wadah.bufferRed[i] - avgRed) + 500;
+            wadah.bufferIR[i] = (wadah.bufferIR[i] - avgIR) + 500;
+
+            // Safety Guard: Pastikan tidak negatif dan hemat karakter (max 3-4 digit)
+            if (wadah.bufferRed[i] < 0) wadah.bufferRed[i] = 0;
+            if (wadah.bufferIR[i] < 0) wadah.bufferIR[i] = 0;
+      }
+}

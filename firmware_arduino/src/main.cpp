@@ -58,6 +58,11 @@ void loop() {
                         // Jika data sudah penuh (sesuai panjang buffer)
                         if (bufferIdx >= PANJANG_BUFFER) {
                               detachInterrupt(digitalPinToInterrupt(interruptPin));
+
+                              // --- TAMBAHKAN DI SINI ---
+                              normalisasiBuffer();  // Kecilkan angka sebelum dikirim
+                              // -------------------------
+
                               waktuMulai = millis();
                               systemState = SYS_SENDING;
                               screenState = SCR_UPLOADING;
