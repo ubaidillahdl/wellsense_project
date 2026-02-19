@@ -25,7 +25,7 @@ class WellSenseDB:
         try:
             response = requests.post(url, json=payload, headers=headers)
             if response.status_code == 200:
-                print("[+] Sinyal pemicu dashboard berhasil dikirim")
+                print("[+] Pemicu Dashboard\t: Terkirim")
             else:
                 print(f"[!] Web server merespon status {response.status_code}")
         except Exception as e:
@@ -85,11 +85,11 @@ class WellSenseDB:
             cursor.execute(query, values)
             self.db.commit()
             cursor.close()
-            print("[+] Data berhasil disimpan ke Database !")
+            print("[+] Simpan Ke Database\t: Berhasil")
 
             # --- EKSEKUSI PATH 2 ---
             # Dipanggil otomatis tepat setelah data masuk database
             self.triger_dashboard(device_token)
 
         except Exception as e:
-            print(f"[!] Gagal simpan data: {e}")
+            print(f"[!] Simpan Ke Database\t: {e}")
