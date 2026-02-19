@@ -1,20 +1,18 @@
-import mysql.connector
+import sqlite3
 import json
 import requests
+from datetime import datetime
 
 
 class WellSenseDB:
     def __init__(self):
-        self.config = {
-            "host": "127.0.0.1",
-            "user": "root",
-            "password": "",
-            "database": "wellsense_db",
-        }
-        try:
-            self.db = mysql.connector.connect(**self.config)
-        except Exception as e:
-            print(f"[!] Database Connection Error: {e}")
+        # Sesuaikan path dengan lokasi database.sqlite Laravel di VPS nanti
+        self.db_path = "D:/laragon/www/wellsense/database/database.sqlite"
+
+    def get_connection(self):
+        """SQLite tidak butuh maintain koneksi seperti MySQL,
+        lebih aman buka-tutup setiap transaksi."""
+        return sqlite3.connect(self.db_path)
 
     def triger_dashboard(self, token):
         """Mengirim sinyal ke Laravel API untuk update dashboard"""
@@ -33,8 +31,12 @@ class WellSenseDB:
 
     def get_device_info(self, token):
         try:
-            cursor = self.db.cursor(dictionary=True)
-            query = "SELECT id, pengguna_id FROM devices WHERE device_token = %s"
+            conn = self.get_connection()
+            # Row_factory membuat hasil query bisa dipanggil pakai nama kolom (seperti dictionary)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            query = "SELECT id, pengguna_id FROM devices WHERE device_token = ?"
             cursor.execute(query, (token,))
             result = cursor.fetchone()
             cursor.close()
@@ -48,11 +50,10 @@ class WellSenseDB:
     ):
         """Menyimpan hasil olahan ANN ke database"""
         try:
-            # Pastikan koneksi tidak timeout
-            if not self.db.is_connected():
-                self.db.reconnect(attempts=3, delay=1)
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            cursor = self.db.cursor()
             query = """
                 INSERT INTO data_kesehatan 
                 (
@@ -63,7 +64,7 @@ class WellSenseDB:
                     hr, spo2, sbp, dbp, hb, 
                     created_at, updated_at
                 ) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
 
             # Kita konversi list signal ke JSON string agar masuk ke longText
@@ -80,11 +81,13 @@ class WellSenseDB:
                 data_vitals.get("sbp"),
                 data_vitals.get("dbp"),
                 data_vitals.get("hb"),
+                waktu_sekarang,
+                waktu_sekarang,
             )
 
             cursor.execute(query, values)
-            self.db.commit()
-            cursor.close()
+            conn.commit()
+            conn.close()
             print("[+] Simpan Ke Database\t: Berhasil")
 
             # --- EKSEKUSI PATH 2 ---
