@@ -15,6 +15,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         """Menangani setiap paket data yang masuk dari SIM800C/Arduino"""
+        print(f"\n[*] Koneksi baru masuk\t: {self.client_address}")
         try:
             # 1. Terima data dengan timeout pendek agar tidak blocking selamanya
             self.request.settimeout(5.0)
@@ -44,9 +45,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
             # 3. Validasi: Pastikan list tidak kosong sebelum diproses
             if list_ir and list_red:
-                print(
-                    f"\n[*] {len(list_ir)} Data diterima dari Perangkat: {device_token}"
-                )
+                print(f"[*] {len(list_ir)} Data diterima \t: {device_token}")
                 print(f"[*] Standar Deviasi IR\t: {np.std(list_ir):.0f}")
                 print(f"[*] Standar Deviasi Red\t: {np.std(list_red):.0f}")
 
@@ -60,7 +59,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
                     # A. Feedback ke Arduino/SIM800C
                     if feedback:
                         self.request.sendall(feedback.encode("utf-8"))
-                        print(f"[*] Data Baru Terkirim: {feedback.strip()}")
+                        print(f"[*] Data Baru Terkirim\t: {feedback.strip()}")
 
                     # B. Logika Pesan Status (Independent: Selalu muncul)
                     if res and res["status"] != "VALID":
