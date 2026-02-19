@@ -45,7 +45,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
             # 3. Validasi: Pastikan list tidak kosong sebelum diproses
             if list_ir and list_red:
-                print(f"\n[*] {len(list_ir)} Data Diterima\t: {device_token}")
+                print(f"[*] {len(list_ir)} Data Diterima\t: {device_token}")
                 print(f"[*] Standar Deviasi IR\t: {np.std(list_ir):.0f}")
                 print(f"[*] Standar Deviasi Red\t: {np.std(list_red):.0f}")
 
