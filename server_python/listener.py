@@ -1,3 +1,4 @@
+import socket
 import socketserver
 import numpy as np
 
@@ -15,7 +16,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         """Menangani setiap paket data yang masuk dari SIM800C/Arduino"""
         try:
-            # 1. Terima data mentah (Buffer 16KB untuk jaga-jaga paket besar)
+            # 1. Terima data dengan timeout pendek agar tidak blocking selamanya
+            self.request.settimeout(5.0)
             self.raw_data = self.request.recv(16384).decode("utf-8", errors="ignore")
             if not self.raw_data:
                 return
@@ -42,13 +44,17 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
             # 3. Validasi: Pastikan list tidak kosong sebelum diproses
             if list_ir and list_red:
-                print(f"\n[*] {len(list_ir)} Data diterima dari Perangkat: {device_token}")
+                print(
+                    f"\n[*] {len(list_ir)} Data diterima dari Perangkat: {device_token}"
+                )
                 print(f"[*] Standar Deviasi IR\t: {np.std(list_ir):.0f}")
                 print(f"[*] Standar Deviasi Red\t: {np.std(list_red):.0f}")
 
                 if self.engine_ref:
                     # Masukkan data ke mesin hitung ANN
-                    res = self.engine_ref.process_package(list_red, list_ir, device_token)
+                    res = self.engine_ref.process_package(
+                        list_red, list_ir, device_token
+                    )
                     feedback = self.engine_ref.get_feedback()
 
                     # A. Feedback ke Arduino/SIM800C
@@ -69,6 +75,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 # 4. Kirim data ke Queue untuk divisualisasikan oleh Plotter
                 if self.data_queue is not None:
                     self.data_queue.put({"red": list_red, "ir": list_ir})
+
+        except socket.timeout:
+            print("[!] Koneksi timeout (Sensor mungkin dilepas)")
 
         except Exception as e:
             print(f"[!] Listener Error: {e}")
