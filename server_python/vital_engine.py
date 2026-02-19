@@ -161,7 +161,7 @@ class VitalEngine:
                     )
 
                     # Siapkan feedback untuk Arduino via Listener
-                    self.feedback_str = f"*{int(round(s_hr))};{int(round(s_spo2))};{int(round(s_sbp))};{int(round(s_dbp))};{int(round(s_hb))};{int(round(std_val))}\n"
+                    self.feedback_str = f"*{int(round(s_hr))};{int(round(s_spo2))};{int(round(s_sbp))};{int(round(s_dbp))};{int(round(s_hb))};{int(round(std_val))}#\n"
                     self.new_data_available = True
 
                     # Update output lengkap untuk Plotter
