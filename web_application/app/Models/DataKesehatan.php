@@ -35,8 +35,8 @@ class DataKesehatan extends Model
     /**
      * Relasi: Data ini dikirim dari alat mana?
      */
-    public function device()
+    public function perangkat()
     {
-        return $this->belongsTo(Device::class, 'device_id');
+        return $this->belongsTo(Perangkat::class, 'perangkat_id');
     }
 }

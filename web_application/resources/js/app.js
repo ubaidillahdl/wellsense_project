@@ -8,7 +8,7 @@ window.Chart = Chart;
 document.addEventListener("alpine:init", () => {
     // --- KONEKSI REVERB/PUSHER ---
     window.Echo.connector.pusher.connection.bind("connected", () => {
-        console.log("Koneksi Reverb Berhasil !");
+        // console.log("Koneksi Reverb Berhasil !");
     });
 
     // --- LISTENER DATA DARI SERVER (SIM800C -> LARAVEL -> ECHO) ---
@@ -27,7 +27,7 @@ document.addEventListener("alpine:init", () => {
                         detail: res.ai_insight,
                     }),
                 );
-                console.log("Insight AI: ", res);
+                // console.log("Insight AI: ", res);
             } else {
                 // Sebar event untuk data vital & grafik PPG
                 window.dispatchEvent(
@@ -35,7 +35,7 @@ document.addEventListener("alpine:init", () => {
                         detail: res,
                     }),
                 );
-                console.log("Data Vital: ", res);
+                // console.log("Data Vital: ", res);
             }
         },
     );
@@ -91,7 +91,7 @@ document.addEventListener("alpine:init", () => {
                 if (!ctx) return;
 
                 const isMobile = window.innerWidth < 768;
-                const thickness = isMobile ? 3 : 1.5;
+                const thickness = isMobile ? 2.5 : 1.5;
 
                 chartInstance = new Chart(ctx, {
                     type: "line",

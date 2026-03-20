@@ -36,8 +36,8 @@ class Pengguna extends Authenticatable
     /**
      * Relasi: Satu pengguna bisa memiliki banyak alat (Contoh: Jam Tangan & Alat Monitor Kasur)
      */
-    public function devices()
+    public function perangkat()
     {
-        return $this->hasMany(Device::class, 'pengguna_id');
+        return $this->hasMany(Perangkat::class, 'pengguna_id');
     }
 }

@@ -4,14 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Device extends Model
+class Perangkat extends Model
 {
-    protected $table = 'devices';
+    protected $table = 'perangkat';
+
 
     // Kolom yang boleh diisi saat registrasi alat (misal via Admin/Seeder)
     protected $fillable = [
-        'device_token',
-        'nama_device',
+        'token_perangkat',
+        'nama_perangkat',
         'pengguna_id'
     ];
 
@@ -28,6 +29,6 @@ class Device extends Model
      */
     public function dataKesehatan()
     {
-        return $this->hasMany(DataKesehatan::class, 'device_id');
+        return $this->hasMany(DataKesehatan::class, 'perangkat_id');
     }
 }

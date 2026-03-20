@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Device;
+use App\Models\Admin;
 use App\Models\Pengguna;
+use App\Models\Perangkat;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -16,22 +17,28 @@ class InitialDataSeeder extends Seeder
     {
         // 1. Buat Pengguna Admin (Sudah punya alat)
         $admin = Pengguna::create([
-            'nama' => 'Admin Wellsense',
-            'email' => 'admin@wellsense.io',
+            'nama' => 'WS01 Client',
+            'email' => 'ws01client@wellsense.io',
             'kata_sandi' => Hash::make('wellsense')
         ]);
 
         // Hubungkan alat ke Admin
-        Device::create([
+        Perangkat::create([
             'pengguna_id' => $admin->id,
-            'device_token' => 'WS-866501012348821',
-            'nama_device' => 'Wellsense Care'
+            'token_perangkat' => 'WS-866501012348821',
+            'nama_perangkat' => 'Wellsense Care'
         ]);
 
         // 2. Buat Pengguna Biasa (Tanpa alat / Masih kosong)
         Pengguna::create([
-            'nama' => 'User Testing',
-            'email' => 'user@wellsense.io',
+            'nama' => 'WS02 Client',
+            'email' => 'ws02client@wellsense.io',
+            'kata_sandi' => Hash::make('wellsense')
+        ]);
+
+        Admin::create([
+            'nama' => 'WS01 Admin',
+            'email' => 'ws01admin@wellsense.io',
             'kata_sandi' => Hash::make('wellsense')
         ]);
 

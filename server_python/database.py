@@ -17,7 +17,7 @@ class WellSenseDB:
     def triger_dashboard(self, token):
         """Mengirim sinyal ke Laravel API untuk update dashboard"""
         url = "http://192.168.0.105/api/v1/send-health-data"
-        payload = {"device_token": str(token)}
+        payload = {"token_perangkat": str(token)}
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         try:
@@ -36,7 +36,7 @@ class WellSenseDB:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            query = "SELECT id, pengguna_id FROM devices WHERE device_token = ?"
+            query = "SELECT id, pengguna_id FROM perangkat WHERE token_perangkat = ?"
             cursor.execute(query, (token,))
             result = cursor.fetchone()
             cursor.close()
@@ -46,7 +46,7 @@ class WellSenseDB:
             return None
 
     def save_health_data(
-        self, device_info, device_token, data_vitals, signals, features
+        self, device_info, token_perangkat, data_vitals, signals, features
     ):
         """Menyimpan hasil olahan ANN ke database"""
         try:
@@ -57,7 +57,7 @@ class WellSenseDB:
             query = """
                 INSERT INTO data_kesehatan 
                 (
-                    pengguna_id, device_id, 
+                    pengguna_id, perangkat_id, 
                     raw_ir, raw_red, 
                     filtered_ir, filtered_red, 
                     features,
@@ -92,7 +92,7 @@ class WellSenseDB:
 
             # --- EKSEKUSI PATH 2 ---
             # Dipanggil otomatis tepat setelah data masuk database
-            self.triger_dashboard(device_token)
+            self.triger_dashboard(token_perangkat)
 
         except Exception as e:
             print(f"[!] Simpan Ke Database\t: {e}")

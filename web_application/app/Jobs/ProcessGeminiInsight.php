@@ -30,7 +30,7 @@ class ProcessGeminiInsight implements ShouldQueue
     public function handle(): void
     {
         // 1. Konfigurasi API Gemini
-        $apiKey = env('GEMINI_API_KEY');
+        $apiKey = config('services.gemini.key') ?? env('GEMINI_API_KEY');
 
         $prompt = "Analisis data kesehatan ini: BP {$this->latestData->sbp}/{$this->latestData->dbp}, " .
             "HR {$this->latestData->hr}, SpO2 {$this->latestData->spo2}, Hb {$this->latestData->hb}. " .

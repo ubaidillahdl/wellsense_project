@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('pengguna_id')->constrained('pengguna')->onDelete('cascade');
-            $table->foreignId('device_id')->constrained('devices')->onDelete('cascade');
+            $table->foreignId('perangkat_id')->constrained('perangkat')->onDelete('cascade');
 
             $table->longText('raw_ir')->nullable();
             $table->longText('raw_red')->nullable();

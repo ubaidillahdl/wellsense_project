@@ -37,7 +37,7 @@ int8_t prosesKirimData() {
       unsigned long waitReply = millis();
       bool dataReceived = false;
 
-      while (millis() - waitReply < 5000) {
+      while (millis() - waitReply < 20000) {
             if (sim800.available()) {
                   char c = sim800.read();
                   if (c == '*') {  // Header paket terdeteksi
@@ -75,12 +75,15 @@ bool cekInternet() {
       // Kuras sisa data di buffer serial SIM800
       while (sim800.available()) sim800.read();
 
-      // Perintah cek internet dengan cara ping IP google
-      sim800.println(F("AT+PING=\"8.8.8.8\""));
+      sim800.println(F("AT+HTTPINIT"));
+      delay(200);
+      sim800.println(F("AT+HTTPPARA=\"URL\",\"https://google.com\""));
+      delay(200);
+      sim800.println(F("AT+HTTPACTION=0"));
 
       // Tunggu respon sukses maksimal 3 detik
       unsigned long timeout = millis();
-      while (millis() - timeout < 3000) {
+      while (millis() - timeout < 15000) {
             if (sim800.available()) {
                   char tempBuffer[50];
                   memset(tempBuffer, 0, sizeof(tempBuffer));
@@ -90,6 +93,7 @@ bool cekInternet() {
 
                   // Cek indikasi koneksi berhasil
                   if (strstr(tempBuffer, "OK")) {
+                        Serial.println(tempBuffer);
                         Serial.println(F(">>> SUKSES Terhubung ke Internet !"));
                         return true;
                   }
@@ -120,8 +124,9 @@ bool hubungkanKePython() {
                   tempBuffer[len] = '\0';
 
                   // Cek indikasi koneksi berhasil
-                  if (strstr(tempBuffer, "OK") || strstr(tempBuffer, "CONNECT") ||
+                  if (strstr(tempBuffer, "CONNECT OK") ||
                       strstr(tempBuffer, "ALREADY CONNECTED")) {
+                        // Serial.println(tempBuffer);
                         Serial.println(F(">>> SUKSES Terhubung ke Server !"));
                         return true;
                   }

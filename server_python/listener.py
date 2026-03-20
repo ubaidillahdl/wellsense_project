@@ -26,7 +26,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             # --- TAMBAHAN: PEMISAHAN TOKEN DAN DATA ---
             # data_parts[0] adalah TOKEN, data_parts[1] adalah SINYAL
             data_parts = self.raw_data.strip().split("|")
-            device_token = data_parts[0]
+            token_perangkat = data_parts[0]
             signal_payload = data_parts[1]
 
             # 2. Parsing format "IR:RED,IR:RED," menjadi list angka
@@ -45,14 +45,14 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
             # 3. Validasi: Pastikan list tidak kosong sebelum diproses
             if list_ir and list_red:
-                print(f"[*] {len(list_ir)} Data Diterima\t: {device_token}")
+                print(f"[*] {len(list_ir)} Data Diterima\t: {token_perangkat}")
                 print(f"[*] Standar Deviasi IR\t: {np.std(list_ir):.0f}")
                 print(f"[*] Standar Deviasi Red\t: {np.std(list_red):.0f}")
 
                 if self.engine_ref:
                     # Masukkan data ke mesin hitung ANN
                     res = self.engine_ref.process_package(
-                        list_red, list_ir, device_token
+                        list_red, list_ir, token_perangkat
                     )
                     feedback = self.engine_ref.get_feedback()
 

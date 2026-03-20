@@ -13,18 +13,18 @@ class VitalEngine:
         self.graph_ready = False  # Penanda untuk Plotter (Grafik)
         self.db = WellSenseDB()
 
-    def process_package(self, red_data, ir_data, device_token=None):
+    def process_package(self, red_data, ir_data, token_perangkat=None):
         """Alur: Pre-processing -> Gatekeeper -> ANN Analysis"""
-        if not ir_data or not device_token:
+        if not ir_data or not token_perangkat:
             print("[!] Data atau Token kosong!")
             return None
 
         # --- 0. VALIDASI TOKEN (PINTU UTAMA) ---
         # Cari tahu siapa pemilik token ini di database Laravel
-        device_info = self.db.get_device_info(device_token)
+        device_info = self.db.get_device_info(token_perangkat)
 
         if not device_info:
-            print(f"[!] Akses Ditolak: Token {device_token} tidak terdaftar!")
+            print(f"[!] Akses Ditolak: Token {token_perangkat} tidak terdaftar!")
             return None
 
         # --- 1. PRE-PROCESSING (Sinyal Mentah) ---
@@ -154,7 +154,7 @@ class VitalEngine:
 
                     self.db.save_health_data(
                         device_info,
-                        device_token,
+                        token_perangkat,
                         vitals_dict,
                         signals_dict,
                         features_dict,

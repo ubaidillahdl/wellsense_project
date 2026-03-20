@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Jobs\ProcessGeminiInsight;
 use App\Models\DataKesehatan;
 use Illuminate\Http\Request;
-use App\Models\Device;
+use App\Models\Perangkat;
 
 class HealthDataController extends Controller
 {
@@ -21,7 +21,7 @@ class HealthDataController extends Controller
     {
         // 1. Validasi Token Device
         $validator = Validator::make($request->all(), [
-            'device_token' => 'required|string',
+            'token_perangkat' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -33,21 +33,21 @@ class HealthDataController extends Controller
 
         try {
             // 2. Verifikasi autentikasi device
-            $device = Device::where('device_token', $request->device_token)->first();
+            $perangkat = Perangkat::where('token_perangkat', $request->token_perangkat)->first();
 
-            if (!$device) {
+            if (!$perangkat) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Device Token tidak valid!'
+                    'message' => 'Token Perangkat tidak valid!'
                 ], 403);
             }
 
             // 3. Ambil entri data terbaru untuk diproses
-            $latestData = DataKesehatan::where('device_id', $device->id)->latest()->first();
+            $latestData = DataKesehatan::where('perangkat_id', $perangkat->id)->latest()->first();
 
             if ($latestData) {
                 // Ambil data sebelumnya untuk komparasi tren/lonjakan
-                $previousData = DataKesehatan::where('device_id', $device->id)->where('id', '<', $latestData->id)->latest()->first();
+                $previousData = DataKesehatan::where('perangkat_id', $perangkat->id)->where('id', '<', $latestData->id)->latest()->first();
 
                 // Evaluasi apakah data menunjukkan indikasi anomali medis
                 $shouldAskAI = $this->cekAnomali($latestData, $previousData);
