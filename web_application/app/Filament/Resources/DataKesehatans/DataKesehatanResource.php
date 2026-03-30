@@ -6,6 +6,7 @@ use App\Filament\Resources\DataKesehatans\Pages\CreateDataKesehatan;
 use App\Filament\Resources\DataKesehatans\Pages\EditDataKesehatan;
 use App\Filament\Resources\DataKesehatans\Pages\ListDataKesehatans;
 use App\Filament\Resources\DataKesehatans\Schemas\DataKesehatanForm;
+use App\Filament\Resources\DataKesehatans\Schemas\DataKesehatanInfolist;
 use App\Filament\Resources\DataKesehatans\Tables\DataKesehatansTable;
 use App\Models\DataKesehatan;
 use BackedEnum;
@@ -13,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+// use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class DataKesehatanResource extends Resource
 {
@@ -30,6 +32,11 @@ class DataKesehatanResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return DataKesehatanForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return DataKesehatanInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
