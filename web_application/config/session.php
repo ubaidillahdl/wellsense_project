@@ -129,8 +129,22 @@ return [
 
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session'
+        Str::slug((string) env('APP_NAME', 'laravel')) . '-session'
     ),
+
+    // 'cookie' => request()->is('wellsense-monitor*')
+    //     ? 'wellsense_admin_session'
+    //     : env(
+    //         'SESSION_COOKIE',
+    //         Str::slug((string) env('APP_NAME', 'laravel')) . '-session'
+    //     ),
+
+    // 'cookie' => (isset($_SERVER['REQUEST_URI']) && str_contains($_SERVER['REQUEST_URI'], '/wellsense-monitor'))
+    //     ? 'wellsense_admin_session'
+    //     : env(
+    //         'SESSION_COOKIE',
+    //         Str::slug((string) env('APP_NAME', 'laravel')) . '-session'
+    //     ),
 
     /*
     |--------------------------------------------------------------------------
@@ -144,6 +158,10 @@ return [
     */
 
     'path' => env('SESSION_PATH', '/'),
+
+    // 'path' => (isset($_SERVER['REQUEST_URI']) && str_contains($_SERVER['REQUEST_URI'], '/wellsense-monitor'))
+    //     ? '/wellsense-monitor'
+    //     : '/',
 
     /*
     |--------------------------------------------------------------------------

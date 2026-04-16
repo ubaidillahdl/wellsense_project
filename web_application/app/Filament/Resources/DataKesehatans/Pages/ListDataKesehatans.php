@@ -9,6 +9,7 @@ use Filament\Resources\Pages\ListRecords;
 class ListDataKesehatans extends ListRecords
 {
     protected static string $resource = DataKesehatanResource::class;
+    protected ?string $heading = '';
 
     protected function getHeaderActions(): array
     {

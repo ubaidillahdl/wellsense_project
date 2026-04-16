@@ -15,33 +15,42 @@ class InitialDataSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Buat Pengguna Admin (Sudah punya alat)
-        $admin = Pengguna::create([
-            'nama' => 'WS01 Client',
-            'email' => 'ws01client@wellsense.io',
-            'kata_sandi' => Hash::make('wellsense')
-        ]);
-
-        // Hubungkan alat ke Admin
-        Perangkat::create([
-            'pengguna_id' => $admin->id,
-            'token_perangkat' => 'WS-866501012348821',
-            'nama_perangkat' => 'Wellsense Care'
-        ]);
-
-        // 2. Buat Pengguna Biasa (Tanpa alat / Masih kosong)
-        Pengguna::create([
-            'nama' => 'WS02 Client',
-            'email' => 'ws02client@wellsense.io',
-            'kata_sandi' => Hash::make('wellsense')
-        ]);
-
         Admin::create([
-            'nama' => 'WS01 Admin',
-            'email' => 'ws01admin@wellsense.io',
+            'nama' => 'WellSense SuperAdmin',
+            'email' => 'admin@wellsense.io',
             'kata_sandi' => Hash::make('wellsense')
         ]);
 
+        $users = collect([
+            ['nama' => 'Budi Santoso', 'email' => 'budi.santoso@gmail.com'],
+            ['nama' => 'Siti Aminah', 'email' => 'siti.aminah@yahoo.com'],
+            ['nama' => 'Andi Wijaya', 'email' => 'andi.wijaya@outlook.com'],
+            ['nama' => 'Dewi Lestari', 'email' => 'dewi.lestari@gmail.com'],
+            ['nama' => 'Rizky Pratama', 'email' => 'rizky.pratama@wellsense.io'],
+        ])->map(fn($u) => Pengguna::create([
+            'nama' => $u['nama'],
+            'email' => $u['email'],
+            'kata_sandi' => Hash::make('wellsense')
+        ]));
+
+        $assignments = [
+            ['user_idx' => 0, 'name' => 'WellSense Home'],
+            ['user_idx' => 0, 'name' => 'WellSense Office'],
+            ['user_idx' => 1, 'name' => 'Personal Tracker'],
+            ['user_idx' => 1, 'name' => 'Elderly Monitor'],
+            ['user_idx' => 2, 'name' => 'WellSense Pro'],
+            ['user_idx' => 2, 'name' => 'Backup Device'],
+            ['user_idx' => 3, 'name' => 'Lestari Care'],
+            ['user_idx' => 4, 'name' => 'Rizky Watch'],
+        ];
+
+        foreach ($assignments as $task) {
+            Perangkat::create([
+                'pengguna_id' => $users[$task['user_idx']]->id,
+                'token_perangkat' => 'WS-' . str_pad(rand(0, 99999999999), 15, '0', STR_PAD_LEFT),
+                'nama_perangkat' => $task['name']
+            ]);
+        }
         $this->command->info('Data Pengguna (Admin & User Kosong) serta Device berhasil dibuat!');
     }
 }

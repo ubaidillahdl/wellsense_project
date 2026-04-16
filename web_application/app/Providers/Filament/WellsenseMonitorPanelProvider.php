@@ -27,10 +27,12 @@ class WellsenseMonitorPanelProvider extends PanelProvider
             ->default()
             ->id('wellsense-monitor')
             ->path('wellsense-monitor')
+            ->viteTheme('resources/css/filament/wellsense-monitor/theme.css')
+            ->favicon(asset('favicon.png'))
             ->authGuard('admin')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Slate,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
@@ -55,6 +57,7 @@ class WellsenseMonitorPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->theme(asset('css/filament/admin/theme.css'));
     }
 }

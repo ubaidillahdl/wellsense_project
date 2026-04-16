@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\DataKesehatans;
 
-use App\Filament\Resources\DataKesehatans\Pages\CreateDataKesehatan;
-use App\Filament\Resources\DataKesehatans\Pages\EditDataKesehatan;
+// use App\Filament\Resources\DataKesehatans\Pages\CreateDataKesehatan;
+// use App\Filament\Resources\DataKesehatans\Pages\EditDataKesehatan;
 use App\Filament\Resources\DataKesehatans\Pages\ListDataKesehatans;
+use App\Filament\Resources\DataKesehatans\Pages\ViewDataKesehatan;
 use App\Filament\Resources\DataKesehatans\Schemas\DataKesehatanForm;
-use App\Filament\Resources\DataKesehatans\Schemas\DataKesehatanInfolist;
 use App\Filament\Resources\DataKesehatans\Tables\DataKesehatansTable;
 use App\Models\DataKesehatan;
 use BackedEnum;
@@ -14,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 // use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class DataKesehatanResource extends Resource
@@ -34,11 +36,6 @@ class DataKesehatanResource extends Resource
         return DataKesehatanForm::configure($schema);
     }
 
-    public static function infolist(Schema $schema): Schema
-    {
-        return DataKesehatanInfolist::configure($schema);
-    }
-
     public static function table(Table $table): Table
     {
         return DataKesehatansTable::configure($table);
@@ -51,12 +48,31 @@ class DataKesehatanResource extends Resource
         ];
     }
 
+    public static function getRecordTitle(?Model $record): ?string
+    {
+        // Mengembalikan nama user sebagai judul record
+        // dd($record);
+        return $record?->pengguna->nama;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->whereIn('id', function ($query) {
+                $query->selectRaw('max(id)')
+                    ->from('data_kesehatan') // pastikan nama tabelnya benar (cek di migration)
+                    ->groupBy('pengguna_id');
+            })
+            ->latest(); // urutkan yang paling baru di paling atas
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListDataKesehatans::route('/'),
-            'create' => CreateDataKesehatan::route('/create'),
-            'edit' => EditDataKesehatan::route('/{record}/edit'),
+            // 'create' => CreateDataKesehatan::route('/create'),
+            // 'edit' => EditDataKesehatan::route('/{record}/edit'),
+            'view' => ViewDataKesehatan::route('/{record}'),
         ];
     }
 }

@@ -1,0 +1,32 @@
+@import "../../../../vendor/filament/filament/resources/css/theme.css";
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+.fi-ta-main,
+.fi-section {
+    @apply bg-slate-800;
+}
+
+.fi-simple-main {
+    box-shadow: none !important;
+    @apply bg-slate-800 w-[85%]! md:w-full!;
+    border-radius: var(--radius-xl);
+}
+
+.fi-ta-main {
+    border-radius: var(--radius-xl);
+}
+
+.fi-simple-header-heading {
+    display: none !important;
+}
+
+.fi-dropdown-panel,
+.fi-topbar,
+.fi-sidebar {
+    @apply bg-slate-900;
+}
+body.fi-body {
+    @apply bg-slate-900 lg:bg-linear-to-tr lg:from-slate-950 lg:to-slate-800;
+}

@@ -31,7 +31,7 @@ class AuthController extends Controller
         ]);
 
         // Cek kecocokan data ke Database (Email & Password otomatis di-hash)
-        if (Auth::attempt($request->only('email', 'password'))) {
+        if (Auth::guard('web')->attempt($request->only('email', 'password'))) {
             // Login Berhasil: Buat ID session baru biar aman dari hacker
             $request->session()->regenerate();
 
@@ -52,10 +52,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Hapus status login di sistem Laravel
-        Auth::logout();
+        Auth::guard('web')->logout();
 
-        $request->session()->invalidate(); // Hancurkan data session
+        // $request->session()->invalidate(); // Hancurkan data session
+        // $request->session()->forget(Auth::guard('web')->getName());
+        $request->session()->forget('login_web_' . sha1(\Illuminate\Auth\SessionGuard::class));
         $request->session()->regenerateToken(); // Ganti token CSRF baru (lebih aman)
 
         // Tendang balik ke halaman login
@@ -92,7 +93,7 @@ class AuthController extends Controller
         ]);
 
         // Setelah daftar, otomatis buat user langsung berstatus "Logged In"
-        Auth::login($user);
+        Auth::guard('web')->login($user);
 
         // Lempar ke dashboard dengan pesan sukses sementara (Flash Session)
         return redirect('/');

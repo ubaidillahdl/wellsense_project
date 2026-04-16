@@ -71,7 +71,9 @@ document.addEventListener("alpine:init", () => {
             if (d < 5) return " Baru saja";
             if (d < 60) return `${d} detik lalu`;
             if (d < 3600) return `${Math.floor(d / 60)} menit lalu`;
-            return `${Math.floor(d / 3600)} jam lalu`;
+            if (d < 86400) return `${Math.floor(d / 3600)} jam lalu`;
+
+            return `${Math.floor(d / 86400)} hari lalu`;
         },
 
         setAwal(detik) {

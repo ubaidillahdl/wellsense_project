@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
     plugins: [
         laravel({
-            input: ["resources/css/app.css", "resources/js/app.js"],
+            input: ["resources/css/app.css", "resources/js/app.js", "resources/css/filament/wellsense-monitor/theme.css"],
             refresh: true,
         }),
         tailwindcss(),
@@ -18,8 +18,8 @@ export default defineConfig({
         port: 5173, // Port standar Vite
         strictPort: true,
         hmr: {
-            // host: "192.168.0.101",
-            host: "10.194.145.250",
+            host: "192.168.0.105",
+            // host: "10.194.145.250",
         },
         cors: true, // Izinkan akses lintas perangkat
     },
