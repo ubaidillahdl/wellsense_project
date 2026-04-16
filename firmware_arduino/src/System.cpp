@@ -7,15 +7,6 @@ void handleInterrupt() {
       dataReady = true;
 }
 
-// --- UTILITAS MEMORI ---
-// Mengecek sisa RAM (Sangat penting karena kita pakai buffer besar)
-int sisaRAM() {
-      extern int __heap_start, *__brkval;
-      int v;
-      // Menghitung selisih antara stack pointer dan heap
-      return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
-}
-
 // --- KONFIGURASI AWAL SISTEM ---
 void initSistem() {
       // Komunikasi Serial ke PC
@@ -23,8 +14,24 @@ void initSistem() {
 
       // Komunikasi ke Modul SIM800C
       sim800.begin(9600);
-      sim800.println("ATE0");  // Disable Echo: Agar SIM800 tidak mengirim balik perintah kita
+      // sim800.println("ATE0");
 
       // Setup Pin Interrupt untuk Sensor
       pinMode(interruptPin, INPUT_PULLUP);
+
+      pinMode(vibratorPin, OUTPUT);
+}
+
+void vibrate() {
+      // Getaran pertama (pendek)
+      digitalWrite(vibratorPin, HIGH);
+      delay(80);
+      digitalWrite(vibratorPin, LOW);
+
+      delay(100);  // Jeda singkat
+
+      // Getaran kedua (sedikit lebih panjang)
+      digitalWrite(vibratorPin, HIGH);
+      delay(150);
+      digitalWrite(vibratorPin, LOW);
 }

@@ -11,8 +11,8 @@
 // --- 1. KONFIGURASI JARINGAN & BUFFER ---
 #define PANJANG_BUFFER 150  // 150 data @50Hz = 3 detik rekaman
 // #define SERVER_IP "192.168.0.105"  // IP Server Python (sesuaikan dengan WiFi/LAN)
-#define SERVER_IP "103.87.66.36"  // IP Server Python (sesuaikan dengan WiFi/LAN)
-#define SERVER_PORT "5005"        // Port socket Python
+#define SERVER_IP "0.tcp.ap.ngrok.io"  // IP Server Python (sesuaikan dengan WiFi/LAN)
+#define SERVER_PORT "14798"            // Port socket Python
 #define DEVICE_TOKEN "WS-866501012348821"
 
 #define I2C_ADDRESS 0x3C
@@ -73,6 +73,7 @@ extern bool butuhRetryCepat;
 extern bool dataReady;
 extern bool dataUpdate;
 extern int8_t res;
+// extern char bf[64];
 
 // --- 4. OBJEK PERIPHERAL ---
 extern MAX30105 particleSensor;
@@ -83,5 +84,6 @@ extern SSD1306AsciiWire oled;
 const byte interruptPin = 3;  // Pin INT dari MAX30105
 const byte rxSim = 4;         // RX Wemos -> TX SIM800
 const byte txSim = 5;         // TX Wemos -> RX SIM800
+const byte vibratorPin = 7;
 
 #endif

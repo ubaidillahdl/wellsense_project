@@ -25,11 +25,15 @@ unsigned long waktuMulai = 0;
 bool butuhRetryCepat = false;
 bool dataUpdate = false;
 int8_t res = 0;
+// char bf[64];
 
 void setup() {
       initSistem();  // Serial, I2C, Pin mode
       initDisp();
+
+      vibrate();
       initSensorMAX();  // Konfigurasi register MAX30105
+      // hubungkanKeInternet();
 }
 
 void loop() {

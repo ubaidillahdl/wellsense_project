@@ -5,8 +5,8 @@
 
 // --- System.cpp: Manajemen Hardware & Memori ---
 void handleInterrupt();
-int sisaRAM();
 void initSistem();
+void vibrate();
 
 // --- Sensor.cpp: Logika MAX30105 & Signal Processing ---
 bool adaTangan();
@@ -19,9 +19,11 @@ void normalisasiBuffer();
 
 // --- Network.cpp: Komunikasi SIM800C ---
 bool cekInternet();
+void hubungkanKeInternet();
 bool hubungkanKePython();
 int8_t prosesKirimData();
 bool pecahDataFeedback(char *buf);
+char *resAT(const char *command, uint16_t timeout, char *buf, uint8_t bufSize, bool earlyExit = false);
 
 // --- Display.cpp
 void initDisp();

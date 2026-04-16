@@ -1,6 +1,194 @@
 #include "Functions.h"
 #include "Global.h"
 
+// char* trimCRLF(char* str) {
+//       // Trim depan
+//       while (*str == '\r' || *str == '\n' || *str == ' ')
+//             str++;
+
+//       // Trim belakang
+//       char* end = str + strlen(str) - 1;
+//       while (end > str && (*end == '\r' || *end == '\n' || *end == ' '))
+//             *end-- = '\0';
+
+//       return str;
+// }
+
+void hubungkanKeInternet() {
+      char buf[128];
+
+      oled.clear();
+      oled.setFont(System5x7);
+      oled.setScrollMode(SCROLL_MODE_AUTO);
+
+      auto logPesanRes = [&]() {
+            oled.println(buf);
+            delay(1500);
+      };
+
+      resAT("AT", 1000, buf, sizeof(buf));
+      Serial.println(buf);
+
+      while (!strstr(buf, "OK")) {
+            Serial.println(F(">>> Menunggu SIM800C..."));
+
+            oled.clear();
+            for (uint8_t titik = 1; titik <= 5; titik++) {
+                  oled.print(F("."));
+                  delay(200);
+            }
+
+            delay(300);
+            resAT("AT", 1000, buf, sizeof(buf));
+      }
+      Serial.println(F(">>> SIM800C Terhubung"));
+      oled.println("");
+      logPesanRes();
+
+      // auto logPesanF = [&](const __FlashStringHelper* pesan) {
+      //       oled.println(pesan);
+      //       delay(1500);
+      // };
+
+      // auto logPesanRes = [&]() {
+      //       oled.println(buf);  // langsung pakai buf, tidak perlu parameter
+      //       delay(1500);
+      // };
+
+      // memset(buf, 0, sizeof(buf));
+      // uint8_t index = 0;
+      // while (true) {
+      //       while (sim800.available()) {
+      //             char c = sim800.read();
+      //             if (index < sizeof(buf) - 1) {
+      //                   buf[index++] = c;
+      //                   buf[index] = '\0';
+      //             }
+      //             if (strstr(buf, "SMS Ready")) break;
+      //       }
+
+      //       Serial.println(buf);
+      //       delay(1000);
+      // }
+      // Serial.println(F(">>> AMAN"));
+
+      // Tunggu SIM800C selesai booting
+      // memset(buf, 0, sizeof(buf));
+      // Serial.println(buf);
+      // uint32_t t = millis();
+      // while (!strstr(buf, "RDY")) {
+      //       if (sim800.available()) {
+      //             uint16_t len = strlen(buf);
+      //             if (len < sizeof(buf) - 1) {
+      //                   buf[len] = sim800.read();
+      //             }
+      //       }
+      //       // Timeout 10 detik, kalau lewat langsung lanjut
+      //       if (millis() - t > 10000) break;
+      // }
+      // Serial.println(F(">>> SIM800C Boot Selesai"));
+
+      // //
+      // //
+      // //
+      // //
+      // resAT("AT+CIPSTATUS", 1000, buf, sizeof(buf), false);
+      // Serial.println(buf);  // debug dulu
+      // if (!strstr(buf, "IP GPRSACT")) {
+      //       // Cek kartu sim
+      //       resAT("AT+CPIN?", 1000, buf, sizeof(buf));
+      //       while (!strstr(buf, "READY")) {
+      //             Serial.println(F(">>> Kartu SIM Belum Siap..."));
+      //             logPesanRes();
+
+      //             delay(500);
+      //             resAT("AT+CPIN?", 1000, buf, sizeof(buf));
+      //       }
+      //       Serial.println(F(">>> Kartu SIM Sudah Siap"));
+      //       logPesanRes();
+
+      //       // Cek registrasi jaringan
+      //       resAT("AT+CREG?", 1000, buf, sizeof(buf));
+      //       while (!strstr(buf, ",1") && !strstr(buf, ",5")) {
+      //             Serial.println(F(">>> Mendaftarkan ke Jaringan..."));
+      //             logPesanRes();
+
+      //             delay(500);
+      //             resAT("AT+CREG?", 1000, buf, sizeof(buf));
+      //       }
+      //       Serial.println(F(">>> Terdaftar di Jaringan..."));
+      //       logPesanRes();
+
+      //       // Cek kekuatan sinyal
+      //       resAT("AT+CSQ", 1000, buf, sizeof(buf));
+      //       char* p = strstr(buf, ":");
+      //       while (p == NULL) {
+      //             delay(500);
+      //             Serial.println(F(">>> CSQ Gagal Dibaca"));
+      //             logPesanRes();
+
+      //             resAT("AT+CSQ", 1000, buf, sizeof(buf));
+      //             p = strstr(buf, ":");
+      //       }
+
+      //       uint8_t csqValue = atoi(p + 1);
+      //       while (csqValue <= 10 || csqValue == 99) {
+      //             delay(500);
+      //             Serial.print(F(">>> Sinyal Lemah "));
+      //             Serial.println(csqValue);
+
+      //             resAT("AT+CSQ", 1000, buf, sizeof(buf));
+      //             p = strstr(buf, ":");
+      //             csqValue = atoi(p + 1);
+      //       }
+      //       Serial.print(F(">>> Kekuatan Sinyal "));
+      //       Serial.println(csqValue);
+      //       logPesanRes();
+
+      //       // Menghubungkan ke jaringan
+      //       resAT("AT+CGATT?", 1000, buf, sizeof(buf));
+      //       while (!strstr(buf, ": 1")) {
+      //             Serial.println(F(">>> Menghubungkan ke Jaringan..."));
+      //             logPesanRes();
+
+      //             delay(500);
+      //             resAT("AT+CGATT?", 1000, buf, sizeof(buf));
+      //       }
+      //       Serial.println(F(">>> Terhubung ke Jaringan"));
+      //       logPesanRes();
+
+      //       // Set APN
+      //       if (strstr(resAT("AT+CIPSTATUS", 1000, buf, sizeof(buf)), "IP INITIAL")) {
+      //             resAT("AT+CSTT=\"internet\"", 1000, buf, sizeof(buf));
+      //             while (!strstr(buf, "OK")) {
+      //                   Serial.println(F(">>> Mencoba Set APN..."));
+      //                   logPesanRes();
+
+      //                   delay(500);
+      //                   resAT("AT+CSTT=\"internet\"", 1000, buf, sizeof(buf));
+      //             }
+      //       }
+      //       Serial.println(F(">>> SUKSES Set APN"));
+      //       logPesanRes();
+
+      //       // Menghubungkan ke Internet
+      //       resAT("AT+CIICR", 5000, buf, sizeof(buf));
+      //       while (!strstr(buf, "OK")) {
+      //             Serial.println(F(">>> Menghubungkan ke Internet..."));
+      //             logPesanRes();
+
+      //             delay(500);
+      //             resAT("AT+CIICR", 5000, buf, sizeof(buf));
+      //       }
+      // }
+      // Serial.println(F(">>> Terhubung ke Internet"));
+      // logPesanRes();
+      // //
+      // //
+      // //
+      // //
+}
+
 int8_t prosesKirimData() {
       // 0. VALIDASI KONEKSI
       if (!cekInternet()) return 0;         // Gagal Internet (OFFLINE)
@@ -75,11 +263,12 @@ bool cekInternet() {
       // Kuras sisa data di buffer serial SIM800
       while (sim800.available()) sim800.read();
 
-      sim800.println(F("AT+HTTPINIT"));
-      delay(200);
-      sim800.println(F("AT+HTTPPARA=\"URL\",\"https://google.com\""));
-      delay(200);
-      sim800.println(F("AT+HTTPACTION=0"));
+      // sim800.println(F("AT+HTTPINIT"));
+      // delay(200);
+      // sim800.println(F("AT+HTTPPARA=\"URL\",\"https://google.com\""));
+      // delay(200);
+      // sim800.println(F("AT+HTTPACTION=0"));
+      sim800.println(F("AT+CIPPING=\"8.8.8.8\",1,20"));
 
       // Tunggu respon sukses maksimal 3 detik
       unsigned long timeout = millis();
@@ -93,7 +282,7 @@ bool cekInternet() {
 
                   // Cek indikasi koneksi berhasil
                   if (strstr(tempBuffer, "OK")) {
-                        Serial.println(tempBuffer);
+                        // Serial.println(tempBuffer);
                         Serial.println(F(">>> SUKSES Terhubung ke Internet !"));
                         return true;
                   }
@@ -107,7 +296,7 @@ bool hubungkanKePython() {
       // Kuras sisa data di buffer serial SIM800
       while (sim800.available()) sim800.read();
 
-      // Perintah buka koneksi ke IP & Port server
+      // command buka koneksi ke IP & Port server
       sim800.print(F("AT+CIPSTART=\"TCP\",\""));
       sim800.print(SERVER_IP);
       sim800.print(F("\","));
@@ -136,10 +325,10 @@ bool hubungkanKePython() {
       return false;
 }
 
-bool pecahDataFeedback(char *buf) {
+bool pecahDataFeedback(char* buf) {
       bool hasilAnalisa = true;
 
-      char *ptr = strtok(buf, ";");
+      char* ptr = strtok(buf, ";");
       if (ptr) dataVitals.hr = atoi(ptr);
 
       ptr = strtok(NULL, ";");
@@ -187,4 +376,27 @@ bool pecahDataFeedback(char *buf) {
             hasilAnalisa = false;
       }
       return hasilAnalisa;
+}
+
+char* resAT(const char* command, uint16_t timeout, char* buf, uint8_t bufSize, bool earlyExit = false) {
+      memset(buf, 0, bufSize);
+
+      // Flush semua data lama yang nyangkut di serial buffer
+      while (sim800.available()) sim800.read();
+
+      sim800.println(command);
+
+      uint8_t index = 0;
+      uint32_t t = millis();
+      while (millis() - t < timeout) {
+            while (sim800.available()) {
+                  char c = sim800.read();
+                  if (index < bufSize - 1) {
+                        buf[index++] = c;
+                        buf[index] = '\0';
+                  }
+            }
+            // if (earlyExit && strstr(buf, "OK") || strstr(buf, "ERROR")) break;
+      }
+      return buf;
 }
