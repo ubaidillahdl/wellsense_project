@@ -19,7 +19,7 @@ int sisaRAM() {
 // --- KONFIGURASI AWAL SISTEM ---
 void initSistem() {
       // Komunikasi Serial ke PC
-      Serial.begin(115200);
+      Serial.begin(9600);
 
       // Komunikasi ke Modul SIM800C
       sim800.begin(9600);

@@ -46,8 +46,11 @@ void bangunSesi() {
       particleSensor.setPulseAmplitudeRed(255);
 
       // --- PROSES FLUSH (Pembersihan Sisa Data) ---
-      particleSensor.check();
-      while (particleSensor.available()) particleSensor.nextSample();  // Buang data lama di buffer sensor
+      // particleSensor.check();
+      // while (particleSensor.available()) particleSensor.nextSample();  // Buang data lama di buffer sensor
+      particleSensor.clearFIFO();
+
+      // Clear flag interrupt pada sensor agar tidak ada trigger palsu di awal
       particleSensor.getINT1();
 
       // Pasang kembali interupsi untuk mulai mendeteksi data baru
@@ -79,7 +82,8 @@ void prosesSampling() {
       dataReady = false;
       particleSensor.check();
 
-      while (particleSensor.available()) {
+      // while (particleSensor.available()) {
+      if (particleSensor.available()) {
             rawRed = particleSensor.getFIFORed();
             rawIR = particleSensor.getFIFOIR();
 

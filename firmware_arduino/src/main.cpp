@@ -73,34 +73,48 @@ void loop() {
                         waktuMulai = millis();
                         systemState = SYS_IDLE;
                         screenState = SCR_READY;
+                        butuhRetryCepat = true;
                         break;
                   }
             } break;
 
             case SYS_SENDING: {
+                  Serial.println("Upload");
                   res = prosesKirimData();  // Kirim ke SIM800C -> Python
 
-                  waktuMulai = millis();
-                  systemState = SYS_IDLE;  // Selesai kirim pasti balik ke IDLE
+                  if (res == 0) {
+                        waktuMulai = millis();
+                        systemState = SYS_IDLE;  // Selesai kirim pasti balik ke IDLE
+                        screenState = SCR_FINISHED;
+                        butuhRetryCepat = true;
+                  } else {
+                        waktuMulai = millis();
+                        systemState = SYS_IDLE;  // Selesai kirim pasti balik ke IDLE
 
-                  switch (res) {
-                        case 1:  // SUKSES
-                              if (!butuhRetryCepat) {
-                                    dataUpdate = true;
-                                    screenState = SCR_FINISHED;
-                              }
-                              break;
-                        case 0:  // OFFLINE (Masalah Sinyal/Internet)
-                              butuhRetryCepat = true;
-                              screenState = SCR_NET_ERR;
-                              break;
-                        default:  // ERROR SERVER (Refused/Timeout/Unsteady)
-                              butuhRetryCepat = true;
-                              screenState = SCR_SRV_ERR;
-                              break;
+                        // switch (res) {
+                        // case 1:  // SUKSES
+                        //       if (!butuhRetryCepat) {
+                        //             dataUpdate = true;
+                        screenState = SCR_FINISHED;
+                        //       }
+                        //       break;
+                        //       case 0:  // OFFLINE (Masalah Sinyal/Internet)
+                        butuhRetryCepat = true;
+
+                        //             screenState = SCR_NET_ERR;
+                        //             break;
+                        //       case -4:  // OFFLINE (Masalah Sinyal/Internet)
+                        //             butuhRetryCepat = true;
+                        //             systemState = SYS_IDLE;   // Kembalikan status ke standby
+                        //             screenState = SCR_READY;  // Langsung balikkan layar ke menu awal
+                        //             break;
+                        //       default:  // ERROR SERVER (Refused/Timeout/Unsteady)
+                        //             butuhRetryCepat = true;
+                        //             screenState = SCR_SRV_ERR;
+                        //             break;
                   }
             } break;
       }
 
-      updateTampilan();  // Refresh OLED berdasarkan screenState & res
+      // updateTampilan();  // Refresh OLED berdasarkan screenState & res
 }

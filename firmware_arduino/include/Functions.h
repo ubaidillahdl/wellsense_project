@@ -10,7 +10,7 @@ void initSistem();
 
 // --- Sensor.cpp: Logika MAX30105 & Signal Processing ---
 bool adaTangan();
-bool updateDesimasi(DesimasiState &d, int32_t inputVal, int16_t &outputVal);
+bool updateDesimasi(DesimasiState& d, int32_t inputVal, int16_t& outputVal);
 void initSensorMAX();
 void prosesStandby();
 void prosesSampling();
@@ -21,7 +21,8 @@ void normalisasiBuffer();
 bool cekInternet();
 bool hubungkanKePython();
 int8_t prosesKirimData();
-bool pecahDataFeedback(char *buf);
+bool pecahDataFeedback(char* buf);
+bool resAT(const char* command, uint16_t timeout, char* buf, uint8_t bufSize);
 
 // --- Display.cpp
 void initDisp();
